@@ -5,7 +5,7 @@
   "main": "agent.js",
   "scripts": {
     "start": "node agent.js",
-    "test": "node test-simulation.js"
+    "test": "node --test \"tests/**/*.test.js\" test-simulation.js"
   },
   "keywords": [
     "router",
@@ -23,6 +23,7 @@
   "dependencies": {
     "@ragent/agent-common": "0.1.0",
     "@ragent/agent-protocol": "0.1.0",
+    "@ragent/analytics": "0.1.0",
     "axios": "^1.8.4",
     "express": "^4.21.2",
     "js-yaml": "^4.1.0",
