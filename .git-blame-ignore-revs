@@ -1,0 +1,3 @@
+# Repo-wide Prettier reformat. No behaviour change.
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+8a9d146fe3f620fe2d0a95b78dfbf1bca48a6b1e
