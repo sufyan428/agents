@@ -20,10 +20,10 @@
     "tools/router-sim"
   ],
   "scripts": {
-    "build": "npm run build -w @ragent/agent-protocol && npm run build -w @ragent/ai-core && npm run build -w @ragent/agent-common",
+    "build": "npm run build -w @ragent/agent-protocol && npm run build -w @ragent/analytics && npm run build -w @ragent/ai-core && npm run build -w @ragent/agent-common",
     "test": "npm run build && npm run test:packages && npm run test:agents",
     "clean": "npm run clean --workspaces --if-present",
-    "test:packages": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common && npm run test -w @ragent/router-sim",
+    "test:packages": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/analytics && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common && npm run test -w @ragent/router-sim",
     "test:agents": "npm test -w agent1 --if-present && npm test -w agent2 --if-present && npm test -w agent3 --if-present && npm test -w agent4 --if-present && npm test -w agent5 --if-present && npm test -w agent7 --if-present && npm test -w agent8 --if-present && npm test -w agent9 --if-present && npm test -w agent10 --if-present",
     "sim": "npm start -w @ragent/router-sim"
   },
