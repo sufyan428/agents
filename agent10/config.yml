@@ -42,7 +42,7 @@ ai:
     # Chosen for reliability, not raw size - the biggest free models on
     # OpenRouter are the most oversubscribed. Swap via OPENROUTER_MODEL
     # (or here) to any "provider/model:free" id from https://openrouter.ai/models.
-    model: "openai/gpt-oss-20b:free"
+    model: "nvidia/nemotron-3-nano-30b-a3b:free"
   max_tokens: 2048
   request_timeout_ms: 45000
 

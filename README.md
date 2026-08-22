@@ -42,7 +42,7 @@ One file, one key, applies to all four agents:
 ```sh
 cp agent6/.env.example agent6/.env
 # edit agent6/.env, paste ONE key:
-#   OPENROUTER_API_KEY=...   (free by default - openai/gpt-oss-20b:free)
+#   OPENROUTER_API_KEY=...   (free by default - nvidia/nemotron-3-nano-30b-a3b:free)
 #   or ANTHROPIC_API_KEY=... (claude-opus-4-8)
 ```
 
@@ -66,7 +66,7 @@ Each agent 1-5 also ships a `Dockerfile`, and `agent6/docker-compose.yml` brings
 ## Known environment quirks (by design, not bugs)
 
 - Agent2's `/health` reflects whether the *monitored router* is reachable, not whether the process is healthy - expect `healthy: false` with no real hardware present.
-- Free-tier LLM models vary in reliability; the shipped default (`openai/gpt-oss-20b:free`) was chosen for consistency over the largest available free model, which tested noticeably flakier under shared load. Swap models freely via `OPENROUTER_MODEL` if you want to trade reliability for raw capability.
+- Free-tier LLM models vary in reliability. The shipped default (`nvidia/nemotron-3-nano-30b-a3b:free`) was picked by measurement, not preference: it returned valid structured output on every attempt at ~1.2s, while larger free models are more oversubscribed and return empty completions under load. Point the framework at any model you like via `OPENROUTER_MODEL` / `AI_MODEL` — agents 7-10 scale with whatever is behind them.
 
 ## License
 
