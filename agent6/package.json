@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node tests/test.js",
+    "test": "node --test \"tests/**/*.test.js\"",
     "install-all": "bash scripts/install-all.sh",
     "start-all": "docker-compose up -d",
     "stop-all": "docker-compose down",

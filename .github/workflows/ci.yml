@@ -6,80 +6,107 @@ on:
   pull_request:
     branches: [main]
 
+# A second push to the same branch cancels the first: a queue of CI runs on
+# superseded commits tells nobody anything.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Control endpoints fail closed without this, so the route tests need one.
+  # A literal in CI is correct: it is not a secret, it is a fixture.
+  AGENT_API_TOKEN: ci-test-token
+
 jobs:
-  # Every agent is an independent Node project - install + syntax-check +
-  # run its own test suite (agents 1-6 have no automated tests yet; agents
-  # 7-10 have unit tests for their pure logic, see `npm test` in each).
-  build-and-test:
+  # One install for the whole workspace. The ten agents and four packages share
+  # a single lockfile, so per-agent installs would be both slower and wrong.
+  lint:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier
+        run: npm run format:check
+
+  test:
+    name: Tests (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        agent:
-          - agent1
-          - agent2
-          - agent3
-          - agent4
-          - agent5
-          - agent6
-          - agent7
-          - agent8
-          - agent9
-          - agent10
+        # 22 is current LTS and what the images use. 20 is the floor the
+        # engines field claims to support, and claiming it without testing it
+        # is how a project ends up broken for half its users.
+        node: ['20', '22']
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node }}
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.agent }}/package-lock.json
+      - run: npm ci
+      - name: Build the TypeScript packages
+        run: npm run build
+      - name: Package tests
+        run: npm run test:packages
+      - name: Agent tests
+        run: npm run test:agents
 
-      - name: Install dependencies
-        working-directory: ${{ matrix.agent }}
-        run: npm ci
-
-      - name: Syntax-check all source files
-        working-directory: ${{ matrix.agent }}
-        run: find src -name '*.js' -exec node -c {} \; 2>&1 | tee /tmp/syntax-errors.txt && [ ! -s /tmp/syntax-errors.txt ]
-
-      - name: Run tests (if this agent declares a test script)
-        working-directory: ${{ matrix.agent }}
-        # agent6's test.js is a live integration test - it expects the
-        # orchestrator already running, which the separate smoke-test job
-        # below provides. Running it here (in isolation) would just time out
-        # waiting for a server that was never started.
-        if: matrix.agent != 'agent6'
-        run: npm test --if-present
-
-  # Boots the whole framework (5 core agents; agents 7-10 stay disabled since
-  # no AI key is configured in CI) and checks the orchestrator reports every
-  # core agent running before tearing it down.
-  smoke-test:
+  security:
+    name: Dependency audit
     runs-on: ubuntu-latest
-    needs: build-and-test
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Fail on a high-severity advisory in anything we ship
+        # --omit=dev deliberately: a advisory in eslint does not reach a user.
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report dev advisories without failing
+        run: npm audit --audit-level=high || true
 
-      - name: Install all agents
+  end-to-end:
+    name: End-to-end against the simulator
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+
+      - name: Start the router simulator
         run: |
-          for d in agent1 agent2 agent3 agent4 agent5 agent6; do
-            (cd "$d" && npm ci)
+          npm run sim > /tmp/sim.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8090/health >/dev/null && break
+            sleep 1
           done
+          curl -sf http://127.0.0.1:8090/health || { cat /tmp/sim.log; exit 1; }
 
-      - name: Boot the orchestrator and verify all 5 core agents come up healthy
+      - name: Boot the framework and verify every core agent comes up
         run: bash scripts/smoke-test.sh
 
-      - name: Run agent6's own integration test suite against the live orchestrator
-        run: |
-          cd agent6
-          timeout 60 node src/index.js > /tmp/orchestrator.log 2>&1 &
-          ORCH_PID=$!
-          npm test
-          TEST_EXIT=$?
-          kill "$ORCH_PID" 2>/dev/null || true
-          exit $TEST_EXIT
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            /tmp/sim.log
+            /tmp/orchestrator.log
+          if-no-files-found: ignore

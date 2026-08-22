@@ -1,57 +1,89 @@
 #!/usr/bin/env bash
-# Boots the orchestrator (which spawns agents 1-5), waits for warmup, then
-# asserts the orchestrator's own /api/overview reports all 5 core agents
-# running. Agents 7-10 are intentionally left out of this check - they're
-# BYOK and won't start without a key configured (expected, not a failure).
 #
-# Usage: bash scripts/smoke-test.sh   (run from the project root)
+# Boots the orchestrator, waits for it to bring the core agents up, and asserts
+# that every one of them is running AND answering its health endpoint.
+#
+# Deliberately checks health rather than just process state: an agent that
+# spawned and then failed to bind its port is not working, and "the process
+# exists" is exactly the kind of assertion that lets a broken build through.
+#
+# Expects the router simulator to already be running (see the CI workflow, or
+# `npm run sim` in another terminal).
+#
+# Usage: bash scripts/smoke-test.sh
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BOOT_SECONDS=90
-WARMUP_SECONDS=25
-LOG_FILE="$(mktemp)"
+BOOT_SECONDS=120
+READY_TIMEOUT=90
+API="http://127.0.0.1:8080"
+LOG_FILE="${TMPDIR:-/tmp}/orchestrator.log"
+
+CORE_AGENTS=(
+  agent1-monitoring
+  agent2-resilience
+  agent3-security
+  agent4-performance
+  agent5-automation
+)
 
 cleanup() {
   if [ -n "${ORCH_PID:-}" ] && kill -0 "$ORCH_PID" 2>/dev/null; then
     kill "$ORCH_PID" 2>/dev/null || true
+    # The orchestrator stops its own children on SIGTERM; give it a moment.
+    sleep 3
   fi
-  rm -f "$LOG_FILE"
 }
 trap cleanup EXIT
 
-echo "Starting orchestrator for up to ${BOOT_SECONDS}s..."
-(cd "$ROOT_DIR/agent6" && timeout "$BOOT_SECONDS" node src/index.js > "$LOG_FILE" 2>&1) &
+fail() {
+  echo "FAIL: $1"
+  echo "--- orchestrator log (last 60 lines) ---"
+  tail -60 "$LOG_FILE" 2>/dev/null || echo "(no log)"
+  exit 1
+}
+
+echo "Starting the orchestrator..."
+(
+  cd "$ROOT_DIR/agent6"
+  AGENT_API_TOKEN="${AGENT_API_TOKEN:-smoke-test-token}" \
+    timeout "$BOOT_SECONDS" node src/index.js > "$LOG_FILE" 2>&1
+) &
 ORCH_PID=$!
 
-echo "Waiting ${WARMUP_SECONDS}s for all agents to come up..."
-sleep "$WARMUP_SECONDS"
+echo "Waiting for the API gateway..."
+for _ in $(seq 1 30); do
+  curl -sf -m 2 "$API/health" >/dev/null 2>&1 && break
+  sleep 1
+done
+curl -sf -m 2 "$API/health" >/dev/null 2>&1 || fail "the gateway never answered on $API"
 
-OVERVIEW=$(curl -s -m 5 http://localhost:8080/api/overview || echo '')
+echo "Waiting up to ${READY_TIMEOUT}s for the core agents to become healthy..."
+DEADLINE=$((SECONDS + READY_TIMEOUT))
+while [ $SECONDS -lt $DEADLINE ]; do
+  OVERVIEW=$(curl -sf -m 5 "$API/api/overview" 2>/dev/null || echo '')
+  [ -z "$OVERVIEW" ] && { sleep 3; continue; }
 
-if [ -z "$OVERVIEW" ]; then
-  echo "FAIL: orchestrator did not respond on http://localhost:8080/api/overview"
-  echo "--- orchestrator log ---"
-  cat "$LOG_FILE"
-  exit 1
-fi
+  READY=$(printf '%s' "$OVERVIEW" | node -e '
+    let s = "";
+    process.stdin.on("data", (d) => (s += d)).on("end", () => {
+      const core = process.argv.slice(1);
+      try {
+        const agents = JSON.parse(s).overview.agents;
+        // Both conditions matter: running means the process is up, healthy
+        // means it is actually serving. An agent can be one without the other.
+        const ok = core.filter((n) => agents[n] && agents[n].status === "running" && agents[n].healthy);
+        console.log(ok.length);
+      } catch { console.log(0); }
+    });
+  ' "${CORE_AGENTS[@]}")
 
-RUNNING_COUNT=$(node -e "
-const data = JSON.parse(process.argv[1]);
-const agents = data.overview.agents;
-const coreAgents = ['agent1-monitoring','agent2-resilience','agent3-security','agent4-performance','agent5-automation'];
-const running = coreAgents.filter(name => agents[name] && agents[name].status === 'running');
-console.log(running.length);
-" "$OVERVIEW")
+  echo "  ${READY}/${#CORE_AGENTS[@]} core agents running and healthy"
+  [ "$READY" -eq "${#CORE_AGENTS[@]}" ] && { echo "PASS: every core agent is up and healthy"; exit 0; }
+  sleep 5
+done
 
-if [ "$RUNNING_COUNT" -eq 5 ]; then
-  echo "PASS: all 5 core agents running"
-  exit 0
-else
-  echo "FAIL: only $RUNNING_COUNT/5 core agents running"
-  echo "--- overview ---"
-  echo "$OVERVIEW"
-  echo "--- orchestrator log ---"
-  cat "$LOG_FILE"
-  exit 1
-fi
+echo "--- final overview ---"
+curl -sf -m 5 "$API/api/overview" || true
+echo
+fail "the core agents did not all become healthy within ${READY_TIMEOUT}s"
