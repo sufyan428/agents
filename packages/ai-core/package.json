@@ -1,0 +1,21 @@
+{
+  "name": "@ragent/ai-core",
+  "version": "0.1.0",
+  "description": "Provider-agnostic LLM client for the optional AI layer. Built to survive free-tier models.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test \"dist/**/*.test.js\"",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.112.0"
+  },
+  "engines": { "node": ">=18.0.0" }
+}

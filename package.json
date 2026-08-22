@@ -1,0 +1,23 @@
+{
+  "name": "router-agent-framework",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A 10-agent framework for monitoring, securing, and optimizing router infrastructure, with an optional bring-your-own-key AI layer.",
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @ragent/agent-protocol && npm run build -w @ragent/ai-core && npm run build -w @ragent/agent-common",
+    "test": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}
