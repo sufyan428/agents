@@ -1,30 +1,41 @@
-# Agent 9 - AI Remediation Advisor
+# agent9 — AI remediation advisor
 
-Suggests fixes for compliance violations (from agent5) and performance anomalies (from agent4), generates incident runbooks, and reviews proposed router config changes for risk - before anyone applies them. BYOK - Claude or OpenRouter (free by default).
+Suggests fixes and writes runbooks. Has no execution path at all.
 
-## This agent never executes anything
+**Optional.** Needs an API key; the framework works fully without it.
+Reports `degraded`, never `unhealthy`, when the model is unavailable.
 
-Every response carries `requiresHumanApproval: true, autoApply: false`. There is no code path in this agent that applies a config change, restarts anything, or otherwise acts on its own suggestions - it only produces text for a human to read and act on. This is deliberate, not a missing feature.
-
-## Setup
-
-No `.env` needed if you're running via `agent6` (the orchestrator) - paste your key once into `agent6/.env` and this agent inherits it. For standalone use, copy `.env.example` to `.env` here instead.
+Default port: `9098` (loopback).
 
 ## Endpoints
 
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/health` | Process health |
-| GET | `/api/suggestions` | History of suggestions/runbooks/reviews |
-| GET | `/api/suggestions/latest` | Most recent one |
-| POST | `/api/suggestions/generate` | Check agent5/agent4 now and suggest fixes if anything's wrong |
-| POST | `/api/runbook` | `{"incidentDescription": "..."}` (optional - falls back to agent7's latest incident if omitted) |
-| POST | `/api/review` | `{"proposedChange": "..."}` - risk-review a proposed config change |
+| Path | Purpose |
+|---|---|
+| `/health` | Liveness plus per-check detail, including any simulated paths |
+| `/metrics` | Process metrics |
+| `/api/findings` | Normalized findings, polled by agent6 for correlation |
+
+## Running it
+
+Normally the orchestrator starts this agent for you:
 
 ```sh
-curl -X POST http://localhost:9098/api/review \
-  -H "Content-Type: application/json" \
-  -d '{"proposedChange": "Disable SNMP v1/v2c, enforce SNMPv3 only"}'
+cd agent6 && npm start
 ```
 
-Also runs a periodic background check (`polling.interval_seconds`, default 120s) that generates a suggestion automatically when it finds a real issue - silent when everything's clean, so history isn't diluted with repeated "all clear" entries.
+Standalone, for development:
+
+```sh
+npm start -w agent9
+```
+
+## Documentation
+
+Install, configuration and deployment are documented once for the whole
+framework rather than repeated per agent:
+
+- [README](../README.md) — what the framework is, and the capability matrix
+- [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) — how the pieces fit together
+- [docs/CONFIGURATION.md](../docs/CONFIGURATION.md) — every setting
+- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — running it for real
+- [SECURITY.md](../SECURITY.md) — trust model and reporting

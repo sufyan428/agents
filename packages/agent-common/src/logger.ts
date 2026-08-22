@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { correlationFormat } from './tracing';
 
 /**
  * Keys whose values must never reach a log sink, matched case-insensitively as
@@ -58,6 +59,12 @@ export function redactText(text: string): string {
     .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, `Bearer ${REDACTED}`);
 }
 
+// Stamps the ambient correlation id onto every record, so no log call has to
+// remember to pass it.
+const traceFormat = winston.format(
+  (info) => correlationFormat()(info as Record<string, unknown>) as typeof info,
+);
+
 const redactFormat = winston.format((info) => {
   if (typeof info.message === 'string') info.message = redactText(info.message);
   for (const key of Object.keys(info)) {
@@ -103,8 +110,13 @@ export function createLogger(opts: LoggerOptions): AgentLogger {
   const transports: winston.transport[] = [
     new winston.transports.Console({
       format: useJson
-        ? winston.format.combine(redactFormat(), winston.format.json())
-        : winston.format.combine(redactFormat(), winston.format.colorize({ level: true }), pretty),
+        ? winston.format.combine(traceFormat(), redactFormat(), winston.format.json())
+        : winston.format.combine(
+            traceFormat(),
+            redactFormat(),
+            winston.format.colorize({ level: true }),
+            pretty,
+          ),
     }),
   ];
 
@@ -114,14 +126,14 @@ export function createLogger(opts: LoggerOptions): AgentLogger {
         filename: `${opts.logDir}/${opts.agent}.log`,
         maxsize: 5 * 1024 * 1024,
         maxFiles: 5,
-        format: winston.format.combine(redactFormat(), winston.format.json()),
+        format: winston.format.combine(traceFormat(), redactFormat(), winston.format.json()),
       }),
       new winston.transports.File({
         filename: `${opts.logDir}/${opts.agent}-error.log`,
         level: 'error',
         maxsize: 5 * 1024 * 1024,
         maxFiles: 5,
-        format: winston.format.combine(redactFormat(), winston.format.json()),
+        format: winston.format.combine(traceFormat(), redactFormat(), winston.format.json()),
       }),
     );
   }

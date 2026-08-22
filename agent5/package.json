@@ -21,8 +21,8 @@
   "author": "sufiyansrepos",
   "license": "MIT",
   "dependencies": {
-    "@ragent/agent-common": "0.1.0",
-    "@ragent/agent-protocol": "0.1.0",
+    "@ragent/agent-common": "1.0.0",
+    "@ragent/agent-protocol": "1.0.0",
     "axios": "^1.8.4",
     "express": "^4.21.2",
     "joi": "^17.13.3",
@@ -38,6 +38,6 @@
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

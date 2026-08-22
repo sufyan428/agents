@@ -1,6 +1,6 @@
 {
   "name": "@ragent/router-sim",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Simulated router: real SNMP responder, real syslog, and on-demand fault injection. Lets the framework be run and tested with no hardware.",
   "license": "MIT",
@@ -16,6 +16,6 @@
     "net-snmp": "^3.11.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

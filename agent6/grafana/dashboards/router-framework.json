@@ -1,0 +1,178 @@
+{
+  "title": "Router Agent Framework",
+  "uid": "ragent-overview",
+  "tags": ["router", "framework"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "router",
+        "label": "Router",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(router_cpu_utilization_percent, router)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Is the framework itself healthy?",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "Agents up",
+      "description": "Agents currently scraping. A gap here means an agent is down, not that a router is.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "targets": [{ "expr": "count(up{job=~\"agent.*\"} == 1)", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "green", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Simulated data in play",
+      "description": "Non-zero means at least one number on this dashboard was generated rather than measured. Check /health on the agent in question.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "targets": [{ "expr": "sum(ragent_simulated_paths_used) or vector(0)", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Router CPU",
+      "description": "Per-router. The framework alerts on departure from each router's own baseline, not only on a fixed line.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "targets": [
+        {
+          "expr": "router_cpu_utilization_percent{router=~\"$router\"}",
+          "legendFormat": "{{router}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "fillOpacity": 8, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Router memory",
+      "description": "Computed as used/(used+free). CISCO-MEMORY-POOL-MIB has no total object; reading one gives the wrong percentage.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "targets": [
+        {
+          "expr": "router_memory_utilization_percent{router=~\"$router\"}",
+          "legendFormat": "{{router}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "fillOpacity": 8 } }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Traffic",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Interface throughput in",
+      "description": "rate() over the counter, which handles the 32-bit wrap a real device performs.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "expr": "rate(router_bandwidth_in_bytes{router=~\"$router\"}[5m]) * 8",
+          "legendFormat": "{{router}} {{interface}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bps", "custom": { "fillOpacity": 8 } } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Interface throughput out",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        {
+          "expr": "rate(router_bandwidth_out_bytes{router=~\"$router\"}[5m]) * 8",
+          "legendFormat": "{{router}} {{interface}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bps", "custom": { "fillOpacity": 8 } } }
+    },
+    {
+      "type": "row",
+      "title": "Alerts and security",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Alerts raised",
+      "description": "Transitions, not samples. A sustained condition appears once here, not once per poll.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "expr": "increase(router_alerts_total{router=~\"$router\"}[15m])",
+          "legendFormat": "{{severity}} {{metric}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Failed logins",
+      "description": "Counted by whether the source is a known router, never by source IP - an attacker-controlled label would let a spoofed flood mint unbounded series and take Prometheus down.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "expr": "increase(router_failed_logins_total[5m])",
+          "legendFormat": "{{router}} known={{known}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
+    }
+  ]
+}

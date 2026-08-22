@@ -1,6 +1,6 @@
 {
   "name": "router-agent-framework",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "A 10-agent framework for monitoring, securing, and optimizing router infrastructure, with an optional bring-your-own-key AI layer.",
   "author": "sufiyansrepos",
@@ -32,7 +32,7 @@
     "format:check": "prettier --check ."
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@eslint/js": "9.17.0",

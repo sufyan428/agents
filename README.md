@@ -1,25 +1,48 @@
 # Router Agent Framework
 
-A 10-agent system for monitoring, securing, and optimizing router infrastructure, with an optional AI layer for cross-agent reasoning, reporting, remediation advice, and a natural-language operator interface.
+[![CI](https://github.com/sufiyansrepos/router-agent-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/sufiyansrepos/router-agent-framework/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](package.json)
 
-## Architecture
+A 10-agent system for monitoring, securing and optimizing router infrastructure.
+Six agents form a deterministic core that never makes an AI call; four optional
+agents add narration, reporting, advice and chat on top of it.
 
+**It runs with no hardware and no API key.** A bundled router simulator gives it
+a real SNMP responder and real syslog to work against, and incident correlation
+is deterministic — `GET /api/incidents` works on a fresh clone.
+
+```sh
+npm ci && npm run build
+npm run sim                    # terminal 1: a simulated router
+cd agent6 && npm start         # terminal 2: the framework
 ```
-agent1  monitoring            SNMP/syslog metrics (CPU, memory, bandwidth, uptime)
-agent2  resilience/failover   primary/backup router failover via SNMP + ICMP heartbeat
-agent3  security/IDS          intrusion detection - auth failures, traffic anomalies, config validation
-agent4  performance           QoS/traffic optimization, latency/jitter/packet-loss tracking
-agent5  automation/governance policy compliance, config backups, self-healing
-agent6  orchestrator          starts/stops/health-checks agents 1-9, unified API gateway (port 8080)
 
---- optional AI layer (BYOK, free by default, disabled with no key configured) ---
-agent7  correlation           cross-agent incident correlation + natural-language Q&A
-agent8  reporting             narrates agent5's compliance/audit data into readable digests
-agent9  remediation advisor   suggests fixes, generates runbooks, reviews config changes - NEVER auto-applies
-agent10 chatops               natural-language interface over the framework, with a confirmation gate on anything destructive
+Then break something and watch it react:
+
+```sh
+curl -X POST localhost:8090/fault/interface_flap
+curl localhost:8080/api/incidents
 ```
 
-Agents 1-6 have zero AI dependency and always run. Agents 7-10 are optional and only start if an API key is configured - the orchestrator detects this automatically and logs clearly when one is skipped.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full walkthrough.
+
+## The ten agents
+
+| | Agent | Does | AI |
+|---|---|---|---|
+| 1 | monitoring | SNMP metrics, syslog, baselining, alerting | no |
+| 2 | resilience | failover, heartbeat | no |
+| 3 | security | intrusion detection | no |
+| 4 | performance | latency, jitter, loss, QoS | no |
+| 5 | governance | compliance, backups, self-healing | no |
+| 6 | orchestrator | supervision, config, **incident correlation** | no |
+| 7 | correlation | narrates agent6's incidents | optional |
+| 8 | reporting | audit digests | optional |
+| 9 | remediation | advice and runbooks; never executes | optional |
+| 10 | chatops | natural language; confirms before acting | optional |
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the diagram and the reasoning.
 
 ## Quick start
 

@@ -1,26 +1,41 @@
-# Agent 7 - AI Correlation & Reasoning Agent
+# agent7 — AI correlation
 
-Correlates signals across agents 1-5 (and the orchestrator) to spot cross-agent incidents that no single agent would catch alone, and answers ad-hoc natural-language questions about framework state. BYOK - Claude or OpenRouter (free by default).
+Narrates the incidents agent6 has already correlated. Does not compute them.
 
-## How it decides when to call the LLM
+**Optional.** Needs an API key; the framework works fully without it.
+Reports `degraded`, never `unhealthy`, when the model is unavailable.
 
-Polls the orchestrator + each agent's `/health` every `correlation.poll_interval_seconds` (default 60s). Only spends an LLM call when something looks anomalous (an agent unreachable/unhealthy, or a status flip since the last poll) - plus one guaranteed baseline check every `baseline_every_n_polls` cycles regardless, so slow-building issues aren't missed just because no single poll looked wrong.
-
-## Setup
-
-No `.env` needed if you're running via `agent6` (the orchestrator) - paste your key once into `agent6/.env` and this agent inherits it. For standalone use, copy `.env.example` to `.env` here instead.
+Default port: `9096` (loopback).
 
 ## Endpoints
 
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/health` | Process health |
-| GET | `/api/snapshot` | Latest raw collected data (all agents' health) |
-| GET | `/api/incidents` | Latest correlation result + running metrics |
-| POST | `/api/ask` | `{"question": "..."}` - ad-hoc natural-language Q&A over current + recent history |
+| Path | Purpose |
+|---|---|
+| `/health` | Liveness plus per-check detail, including any simulated paths |
+| `/metrics` | Process metrics |
+| `/api/findings` | Normalized findings, polled by agent6 for correlation |
+
+## Running it
+
+Normally the orchestrator starts this agent for you:
 
 ```sh
-curl -X POST http://localhost:9096/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "why is agent2 unhealthy?"}'
+cd agent6 && npm start
 ```
+
+Standalone, for development:
+
+```sh
+npm start -w agent7
+```
+
+## Documentation
+
+Install, configuration and deployment are documented once for the whole
+framework rather than repeated per agent:
+
+- [README](../README.md) — what the framework is, and the capability matrix
+- [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) — how the pieces fit together
+- [docs/CONFIGURATION.md](../docs/CONFIGURATION.md) — every setting
+- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — running it for real
+- [SECURITY.md](../SECURITY.md) — trust model and reporting

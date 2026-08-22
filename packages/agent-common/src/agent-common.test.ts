@@ -17,6 +17,9 @@ import {
   resetSimulationRegistry,
 } from './simulation';
 import { FindingStore } from './findings';
+import { Store } from './store';
+import { withTrace, currentCorrelationId, traceHeaders, instrumentAxios } from './tracing';
+import { createFinding } from '@ragent/agent-protocol';
 
 /* -------------------------------- logging -------------------------------- */
 
@@ -550,4 +553,202 @@ test('a simulated finding marks the whole store', () => {
   store.report(sampleFinding({ kind: 'qos_violation', simulated: true }));
   assert.equal(store.hasSimulated, true);
   assert.equal(store.summary().simulated, true);
+});
+
+/* ---------------------------------- store -------------------------------- */
+
+const storeFinding = (over: Record<string, unknown> = {}) =>
+  createFinding({
+    agent: 'agent1-monitoring',
+    kind: 'cpu_threshold_exceeded',
+    severity: 'high',
+    entity: { type: 'router', id: '10.0.0.1', name: 'R1' },
+    title: 'CPU high',
+    ...over,
+  } as never);
+
+test('a finding survives being written and read back', () => {
+  const s = new Store({ file: ':memory:' });
+  assert.equal(s.available, true);
+  s.saveFinding(storeFinding());
+  const rows = s.recentFindings();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.kind, 'cpu_threshold_exceeded');
+  assert.equal(rows[0]?.simulated, 0);
+  s.close();
+});
+
+test('re-saving the same finding updates it rather than duplicating', () => {
+  const s = new Store({ file: ':memory:' });
+  const f = storeFinding();
+  s.saveFinding(f);
+  s.saveFinding({ ...f, count: 7, lastSeen: new Date(Date.now() + 60_000).toISOString() });
+  const rows = s.recentFindings();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.count, 7);
+  s.close();
+});
+
+test('history answers "has this happened before"', () => {
+  // The question an operator actually asks, and one the framework could not
+  // answer at all while everything lived in memory.
+  const s = new Store({ file: ':memory:' });
+  for (let i = 0; i < 3; i++) {
+    s.saveFinding(storeFinding({}));
+  }
+  const f = storeFinding();
+  s.saveFinding(f);
+  const h = s.historyFor(f.dedupeKey);
+  assert.ok(h.occurrences >= 1);
+  assert.ok(h.firstEver);
+  s.close();
+});
+
+test('resolution is recorded against the open finding only', () => {
+  const s = new Store({ file: ':memory:' });
+  const f = storeFinding();
+  s.saveFinding(f);
+  s.markFindingResolved(f.dedupeKey, 'recovered');
+  const row = s.recentFindings()[0] as Record<string, unknown>;
+  assert.equal(row.resolve_reason, 'recovered');
+  assert.ok(row.resolved_at);
+  s.close();
+});
+
+test('incidents persist and update in place', () => {
+  const s = new Store({ file: ':memory:' });
+  const base = {
+    id: 'incident-1',
+    entity: 'R1',
+    severity: 'critical',
+    rootCauseKind: 'device_unreachable',
+    rootCauseTitle: 'Unreachable',
+    findingCount: 3,
+    agents: ['agent1', 'agent2'],
+    confidence: 0.8,
+    simulated: false,
+    startedAt: '2026-01-01T00:00:00Z',
+    lastActivityAt: '2026-01-01T00:01:00Z',
+  };
+  s.saveIncident(base);
+  s.saveIncident({
+    ...base,
+    findingCount: 5,
+    lastActivityAt: '2026-01-01T00:05:00Z',
+    narrative: 'Power loss.',
+  });
+  const rows = s.recentIncidents();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.finding_count, 5);
+  assert.equal(rows[0]?.narrative, 'Power loss.');
+  s.close();
+});
+
+test('a later save without a narrative does not erase one already stored', () => {
+  const s = new Store({ file: ':memory:' });
+  const base = {
+    id: 'i1',
+    entity: 'R1',
+    severity: 'high',
+    rootCauseKind: 'k',
+    rootCauseTitle: 't',
+    findingCount: 1,
+    agents: [],
+    confidence: 0.5,
+    simulated: false,
+    startedAt: '2026-01-01T00:00:00Z',
+    lastActivityAt: '2026-01-01T00:00:00Z',
+  };
+  s.saveIncident({ ...base, narrative: 'Written by the AI layer.' });
+  s.saveIncident(base); // a later deterministic-only pass
+  assert.equal(s.recentIncidents()[0]?.narrative, 'Written by the AI layer.');
+  s.close();
+});
+
+test('tables stay bounded', () => {
+  const s = new Store({ file: ':memory:', maxRows: 10 });
+  for (let i = 0; i < 40; i++) s.recordEvent('agent1', 'poll', `n=${i}`);
+  assert.ok(s.stats().events <= 10, `bounded at ${s.stats().events}`);
+  s.close();
+});
+
+test('an unavailable driver degrades to no-ops rather than throwing', () => {
+  // Monitoring that runs without history beats monitoring that will not run.
+  const s = new Store({ file: ':memory:' });
+  s.close();
+  assert.doesNotThrow(() => {
+    s.saveFinding(storeFinding());
+    s.recordEvent('a', 'b');
+    s.recentFindings();
+    s.stats();
+  });
+});
+
+/* --------------------------------- tracing ------------------------------- */
+
+test('a correlation id is visible to everything inside the trace', async () => {
+  assert.equal(currentCorrelationId(), undefined, 'no ambient id outside a trace');
+  await withTrace('trace-1', 'agent1', async () => {
+    assert.equal(currentCorrelationId(), 'trace-1');
+    await new Promise((r) => setTimeout(r, 1));
+    assert.equal(currentCorrelationId(), 'trace-1', 'survives an await');
+  });
+  assert.equal(currentCorrelationId(), undefined, 'does not leak out');
+});
+
+test('concurrent traces do not bleed into each other', async () => {
+  const seen: string[] = [];
+  await Promise.all([
+    withTrace('a', 'x', async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      seen.push(currentCorrelationId()!);
+    }),
+    withTrace('b', 'x', async () => {
+      await new Promise((r) => setTimeout(r, 1));
+      seen.push(currentCorrelationId()!);
+    }),
+  ]);
+  assert.deepEqual(seen.sort(), ['a', 'b']);
+});
+
+test('outbound headers carry the id, and are empty outside a trace', () => {
+  assert.deepEqual(traceHeaders(), {});
+  withTrace('trace-9', 'agent6', () => {
+    assert.deepEqual(traceHeaders(), { 'x-correlation-id': 'trace-9' });
+  });
+});
+
+test('an axios interceptor adds the header without the call site knowing', () => {
+  let installed: ((c: Record<string, unknown>) => Record<string, unknown>) | null = null;
+  instrumentAxios({
+    interceptors: {
+      request: {
+        use: (fn: (c: never) => never) => {
+          installed = fn as never;
+        },
+      },
+    },
+  } as never);
+  assert.ok(installed);
+  withTrace('trace-x', 'agent7', () => {
+    const out = installed!({ headers: { existing: '1' } });
+    assert.equal((out.headers as Record<string, string>)['x-correlation-id'], 'trace-x');
+    assert.equal((out.headers as Record<string, string>).existing, '1', 'existing headers survive');
+  });
+});
+
+test('an HTTP request runs inside a trace matching its header', async () => {
+  let observed: string | undefined;
+  await withServer(
+    { ...base },
+    (s) =>
+      s.app.get('/probe', (_q, r) => {
+        observed = currentCorrelationId();
+        r.json({ ok: true });
+      }),
+    async (url) => {
+      await fetch(`${url}/probe`, { headers: { 'x-correlation-id': 'inbound-42' } });
+      assert.equal(observed, 'inbound-42', 'the handler sees the inbound id');
+    },
+  );
 });

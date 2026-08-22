@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { correlate, suppressibleFindingIds } = require('@ragent/analytics');
+const { openStore } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 
 /**
@@ -28,6 +29,10 @@ class CorrelationEngine {
     this.historySize = historySize;
 
     this.timer = null;
+    // Incidents outlive the process. Without this, restarting the orchestrator
+    // during an investigation loses the incident being investigated, and
+    // "has this happened before?" is unanswerable.
+    this.store = openStore('agent6-orchestrator', undefined, logger);
     this.clusters = [];
     this.lastRunAt = null;
     this.history = [];
@@ -112,6 +117,20 @@ class CorrelationEngine {
         existing.findingCount = c.all.length;
         continue;
       }
+      this.store.saveIncident({
+        id: c.id,
+        entity: c.entity,
+        severity: c.severity,
+        rootCauseKind: c.rootCause.kind,
+        rootCauseTitle: c.rootCause.title,
+        findingCount: c.all.length,
+        agents: c.agentsInvolved,
+        confidence: c.confidence,
+        simulated: c.simulated,
+        startedAt: c.startedAt,
+        lastActivityAt: c.lastActivityAt,
+      });
+
       this.history.push({
         id: c.id,
         entity: c.entity,
@@ -145,11 +164,16 @@ class CorrelationEngine {
     }
   }
 
+  /** Incidents recorded previously, newest first. */
+  incidentHistory(limit = 50) {
+    return this.store.recentIncidents(limit);
+  }
+
   /** Current incidents, shaped for the API and for agent7 to enrich. */
   snapshot() {
     return {
       generatedAt: this.lastRunAt,
-      stats: this.stats,
+      stats: { ...this.stats, storage: this.store.stats() },
       incidents: this.clusters.map((c) => ({
         id: c.id,
         entity: c.entity,

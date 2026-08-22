@@ -1,6 +1,6 @@
 {
   "name": "@ragent/agent-common",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Shared runtime for every agent: logging, config loading, and a hardened HTTP server factory.",
   "license": "MIT",
   "main": "dist/index.js",
@@ -14,7 +14,8 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
-    "@ragent/agent-protocol": "0.1.0",
+    "@ragent/agent-protocol": "1.0.0",
+    "better-sqlite3": "11.7.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
@@ -30,6 +31,6 @@
     "@types/js-yaml": "^4.0.9"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

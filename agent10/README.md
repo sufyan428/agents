@@ -1,36 +1,41 @@
-# Agent 10 - AI ChatOps Agent
+# agent10 — AI ChatOps
 
-Natural-language interface over the orchestrator's API - ask about framework status, or tell it to restart/stop/start an agent. BYOK - Claude or OpenRouter (free by default).
+Natural-language interface. Anything destructive needs an authenticated confirmation.
 
-## Confirmation gate on destructive actions
+**Optional.** Needs an API key; the framework works fully without it.
+Reports `degraded`, never `unhealthy`, when the model is unavailable.
 
-The LLM never executes anything directly - it only classifies your message into a fixed action registry. Read-only actions (status/health/incidents/reports/suggestions) run immediately. `restart_agent`/`stop_agent`/`start_agent` instead return a `pendingAction` that you must round-trip to `/api/chat/confirm` before anything actually happens - a natural-language request alone is never enough.
-
-## Setup
-
-No `.env` needed if you're running via `agent6` (the orchestrator) - paste your key once into `agent6/.env` and this agent inherits it. For standalone use, copy `.env.example` to `.env` here instead.
-
-Optional: set `SLACK_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL` to push agent7's incidents and agent8's digests to a real channel automatically. Without either, this agent still works fully via its own endpoints - proactive findings just get recorded locally instead (`GET /api/notifications`).
+Default port: `9099` (loopback).
 
 ## Endpoints
 
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/health` | Process health |
-| POST | `/api/chat` | `{"message": "..."}` - main entry point |
-| POST | `/api/chat/confirm` | `{"pendingAction": {...}}` - confirms and executes a destructive action returned by `/api/chat` |
-| GET | `/api/notifications` | History of proactively pushed findings |
+| Path | Purpose |
+|---|---|
+| `/health` | Liveness plus per-check detail, including any simulated paths |
+| `/metrics` | Process metrics |
+| `/api/findings` | Normalized findings, polled by agent6 for correlation |
+
+## Running it
+
+Normally the orchestrator starts this agent for you:
 
 ```sh
-# Read-only - executes immediately
-curl -X POST http://localhost:9099/api/chat -H "Content-Type: application/json" \
-  -d '{"message": "what is the overall status of the framework?"}'
-
-# Destructive - returns a pendingAction, does NOT execute yet
-curl -X POST http://localhost:9099/api/chat -H "Content-Type: application/json" \
-  -d '{"message": "restart agent2-resilience"}'
-
-# Confirm the exact pendingAction from the previous response to actually run it
-curl -X POST http://localhost:9099/api/chat/confirm -H "Content-Type: application/json" \
-  -d '{"pendingAction": {"action": "restart_agent", "agentName": "agent2-resilience"}}'
+cd agent6 && npm start
 ```
+
+Standalone, for development:
+
+```sh
+npm start -w agent10
+```
+
+## Documentation
+
+Install, configuration and deployment are documented once for the whole
+framework rather than repeated per agent:
+
+- [README](../README.md) — what the framework is, and the capability matrix
+- [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) — how the pieces fit together
+- [docs/CONFIGURATION.md](../docs/CONFIGURATION.md) — every setting
+- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — running it for real
+- [SECURITY.md](../SECURITY.md) — trust model and reporting

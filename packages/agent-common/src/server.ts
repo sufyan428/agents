@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import { Registry, collectDefaultMetrics } from 'prom-client';
 import { buildHealthReport, healthHttpStatus, type HealthCheck } from '@ragent/agent-protocol';
 import { newCorrelationId } from '@ragent/agent-protocol';
+import { withTrace } from './tracing';
 import type { AgentLogger } from './logger';
 
 declare global {
@@ -112,7 +113,10 @@ export function createServer(opts: ServerOptions): AgentServer {
     const inbound = req.get('x-correlation-id');
     req.correlationId = inbound && /^[\w.-]{1,64}$/.test(inbound) ? inbound : newCorrelationId();
     res.setHeader('x-correlation-id', req.correlationId);
-    next();
+    // Everything this request triggers - including async work and any outbound
+    // call to another agent - inherits the id, so one incident produces one
+    // trace across all ten processes rather than one per hop.
+    withTrace(req.correlationId, agent, next);
   });
 
   const limiter = rateLimit({
