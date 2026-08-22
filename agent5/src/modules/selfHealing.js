@@ -1,5 +1,4 @@
 const logger = require('../utils/logger');
-const configManager = require('./configManager');
 
 class SelfHealing {
   constructor(config, policyChecker, configManager) {
@@ -268,7 +267,7 @@ class SelfHealing {
     }
   }
 
-  async healInterface(router, violation, strategy) {
+  async healInterface(router, violation, _strategy) {
     const snmpClient = require('../utils/snmpClient');
     const snmp = new snmpClient(router);
 
@@ -340,7 +339,7 @@ class SelfHealing {
    * It now produces a suggestion for a human instead. Marked simulated:false
    * because nothing is being pretended - no device write is claimed.
    */
-  async healSnmp(router, violation, strategy) {
+  async healSnmp(router, _violation, _strategy) {
     const message =
       'SNMP community rotation requires a human. It is vendor-specific, it is not ' +
       'settable through a standard MIB object, and applying it unattended can lock ' +
@@ -365,7 +364,7 @@ class SelfHealing {
     };
   }
 
-  async healRouting(router, violation, strategy) {
+  async healRouting(router, _violation, _strategy) {
     // Clear routing table or specific routes
     logger.warn(`Clearing routing table on ${router.name}`);
     
@@ -383,7 +382,7 @@ class SelfHealing {
     };
   }
 
-  async healNtp(router, violation, strategy) {
+  async healNtp(router, _violation, _strategy) {
     // Resync NTP
     logger.info(`Resyncing NTP on ${router.name}`);
     
@@ -401,7 +400,7 @@ class SelfHealing {
     };
   }
 
-  async healFirmware(router, violation, strategy) {
+  async healFirmware(router, _violation, _strategy) {
     // Schedule firmware update
     logger.info(`Scheduling firmware update for ${router.name}`);
     
@@ -419,7 +418,7 @@ class SelfHealing {
     };
   }
 
-  async healAlert(router, violation, strategy) {
+  async healAlert(router, violation, _strategy) {
     // Just alert, no automatic healing
     logger.warn(`Alert only for ${violation.policy} on ${router.name} - manual intervention required`);
     

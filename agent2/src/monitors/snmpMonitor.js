@@ -1,5 +1,4 @@
 const snmp = require('snmp-native');
-const Logger = require('../utils/logger');
 
 class SNMPMonitor {
   constructor(config, logger, metrics) {

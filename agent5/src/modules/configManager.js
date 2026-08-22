@@ -272,7 +272,7 @@ class ConfigManager {
     }
   }
 
-  async configureSyslog(router, change) {
+  async configureSyslog(router, _change) {
     // Placeholder for syslog configuration
     logger.info(`Configuring syslog for ${router.name}`);
     return {
@@ -343,7 +343,7 @@ class ConfigManager {
   async listBackups(router = null) {
     try {
       const files = await fs.readdir(this.backupDir);
-      let backups = [];
+      const backups = [];
 
       for (const file of files) {
         if (file.endsWith('.config')) {

@@ -81,7 +81,7 @@ class SNMPCollector {
     });
   }
 
-  async getSingleValue(session, oidString, routerName) {
+  async getSingleValue(session, oidString, _routerName) {
     return new Promise((resolve) => {
       const oidArray = this.oidStringToArray(oidString);
       if (!oidArray) return resolve(null);
@@ -94,7 +94,7 @@ class SNMPCollector {
             resolve(varbinds[0].value);
           }
         });
-      } catch (error) {
+      } catch (_error) {
         resolve(null);
       }
     });
@@ -222,7 +222,7 @@ class SNMPCollector {
   }
 
   async collectAll() {
-    for (const [name, data] of this.sessions) {
+    for (const name of this.sessions.keys()) {
       await this.collect(name);
     }
   }

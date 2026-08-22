@@ -231,7 +231,7 @@ class PolicyChecker {
   }
 
   /** SIMULATED. See checkSyslogPattern - returns compliant without reading the device. */
-  async checkConfiguration(router, policy) {
+  async checkConfiguration(_router, _policy) {
     return {
       ...markSimulated('agent5.checkConfiguration', logger),
       compliant: true,

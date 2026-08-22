@@ -1,5 +1,4 @@
 const cron = require('node-cron');
-const Logger = require('../utils/logger');
 
 class HeartbeatChecker {
   constructor(config, logger, metrics, snmpMonitor, pingMonitor) {
@@ -77,7 +76,7 @@ class HeartbeatChecker {
     }
   }
 
-  async checkRouterHealth(routerConfig, routerType) {
+  async checkRouterHealth(routerConfig, _routerType) {
     const methods = ['snmp', 'ping'];
     const results = [];
 

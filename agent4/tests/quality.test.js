@@ -81,7 +81,7 @@ test('recovery clears the finding', () => {
 });
 
 test('a rising link forecasts saturation with a time estimate', () => {
-  const { qa, findings } = make();
+  const { qa } = make();
   const t0 = Date.now();
   for (let i = 0; i < 12; i++) qa.recordUtilisation('R1', 'Gi0/0', 0.5 + i * 0.02, t0 + i * 60_000);
   const f = qa.evaluateSaturation('R1', 'Gi0/0');

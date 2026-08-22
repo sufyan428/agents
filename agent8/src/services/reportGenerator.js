@@ -78,7 +78,7 @@ class ReportGenerator {
   }
 
   getHistory() {
-    return this.history.map(({ markdown, ...meta }) => meta);
+    return this.history.map(({ _markdown, ...meta }) => meta);
   }
 
   getLatest() {

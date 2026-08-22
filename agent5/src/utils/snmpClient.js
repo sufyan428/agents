@@ -81,7 +81,7 @@ class SNMPClient {
         value: value
       };
 
-      session.set([varbind], (error, varbinds) => {
+      session.set([varbind], (error, _varbinds) => {
         if (error) {
           logger.error(`SNMP SET failed for ${oid}: ${error.message}`);
           reject(error);

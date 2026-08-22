@@ -25,7 +25,7 @@ function warmUp(processor, entity, value, n = 30, startMs = Date.UTC(2026, 0, 1)
 
 test('a configured threshold breach produces a finding', () => {
   const { processor, findingStore } = makeProcessor();
-  let t = Date.UTC(2026, 0, 1);
+  const t = Date.UTC(2026, 0, 1);
   // raiseAfter is 2, so a single sample must not be enough.
   processor.process('R1', 'cpu', 95, { unit: '%', at: new Date(t) });
   assert.strictEqual(findingStore.activeCount, 0, 'one breach is not sustained');
@@ -70,7 +70,7 @@ test('a departure from this device\'s normal is caught below every threshold', (
   // The case a fixed threshold cannot see: this device idles at 22%, so 60% is
   // a real event - but 60 is under both the 75 warning and 90 critical lines.
   const { processor, findingStore } = makeProcessor();
-  let t = warmUp(processor, 'R1', 22);
+  const t = warmUp(processor, 'R1', 22);
   processor.process('R1', 'cpu', 60, { unit: '%', at: new Date(t) });
   processor.process('R1', 'cpu', 60, { unit: '%', at: new Date(t + 30_000) });
 

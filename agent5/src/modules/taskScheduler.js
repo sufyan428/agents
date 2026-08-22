@@ -333,7 +333,7 @@ class TaskScheduler {
     return versions[routerType.toLowerCase()] || '1.0.0';
   }
 
-  async runAuditReport(routers) {
+  async runAuditReport(_routers) {
     logger.info('Running audit report generation');
 
     // Generate various audit reports
@@ -467,12 +467,12 @@ class TaskScheduler {
     };
   }
 
-  async checkSyslogEnabled(snmp) {
+  async checkSyslogEnabled(_snmp) {
     // Simplified check - in production, you would verify actual syslog config
     return true;
   }
 
-  async checkSnmpSecure(snmp) {
+  async checkSnmpSecure(_snmp) {
     // Check if community is not "public" or "private"
     // This is a simplified check
     return true;

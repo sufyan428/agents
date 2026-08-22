@@ -66,7 +66,7 @@ test('repair prompt carries the error and truncates a huge original', () => {
 /* -------------------------------- budget -------------------------------- */
 
 test('budget blocks once the call limit is reached', () => {
-  let now = 1_000_000;
+  const now = 1_000_000;
   const b = new Budget(3, 0, () => now);
   for (let i = 0; i < 3; i++) {
     assert.ok(b.canSpend());

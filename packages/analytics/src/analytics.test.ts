@@ -246,7 +246,7 @@ test('too few samples means no confident forecast', () => {
 
 test('sliding window counts within the window and forgets outside it', () => {
   const c = new SlidingWindowCounter(60_000);
-  let now = 1_000_000;
+  const now = 1_000_000;
   for (let i = 0; i < 5; i++) c.record('10.0.0.1', now + i * 1000);
   assert.equal(c.countFor('10.0.0.1', now + 5000), 5);
   assert.equal(c.countFor('10.0.0.1', now + 120_000), 0, 'window expired');

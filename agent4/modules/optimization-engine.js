@@ -6,7 +6,6 @@ declareSimulated(
   'a NETCONF/RESTCONF write, gated behind the same allowlist and dry-run as agent5 self-healing'
 );
 
-const winston = require('winston');
 
 class OptimizationEngine {
   constructor(config, logger) {

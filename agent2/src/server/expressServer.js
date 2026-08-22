@@ -1,5 +1,4 @@
 const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
-const Logger = require('../utils/logger');
 
 class ExpressServer {
   constructor(config, logger, metrics, heartbeatChecker, failoverManager, configSync, syslogListener) {
@@ -17,7 +16,6 @@ class ExpressServer {
   }
 
   setupRoutes(app) {
-    const metricsConfig = this.config.metrics || {};
     
     // /health and /metrics come from the shared factory. The agent's own
     // Prometheus registry is still exposed, under a distinct path, because it

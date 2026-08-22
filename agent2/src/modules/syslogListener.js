@@ -1,5 +1,4 @@
 const dgram = require('dgram');
-const Logger = require('../utils/logger');
 
 class SyslogListener {
   constructor(config, logger, metrics) {
@@ -252,7 +251,6 @@ class SyslogListener {
 
     // Could trigger alerts or additional monitoring here
     if (this.isFromRouter(address)) {
-      const routerType = address === this.config.primary?.host ? 'primary' : 'backup';
       
       // You might want to trigger additional health checks
       // or adjust monitoring thresholds based on critical events

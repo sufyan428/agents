@@ -7,7 +7,6 @@ declareSimulated(
 );
 
 const ping = require('ping');
-const winston = require('winston');
 
 class IcmpTracker {
   constructor(config, logger) {
@@ -100,7 +99,7 @@ class IcmpTracker {
         packetLoss: packetLoss
       };
 
-    } catch (error) {
+    } catch (_error) {
       // Fallback to simulated data if ping fails (e.g., in containerized environment)
       this.logger.warn(`Ping to ${host} failed, using simulated data`);
       return this.getSimulatedPingResult(host);

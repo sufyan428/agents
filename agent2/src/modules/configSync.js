@@ -8,7 +8,7 @@ declareSimulated('agent2.applyRestconf', 'Reports a config as applied without se
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const Logger = require('../utils/logger');
+const https = require('https'); // used by executeRestconfCommand; was never imported
 
 class ConfigSync {
   constructor(config, logger, metrics) {
@@ -301,7 +301,7 @@ class ConfigSync {
     }
   }
 
-  async applyViaNetconf(routerConfig, configData) {
+  async applyViaNetconf(_routerConfig, _configData) {
     // Placeholder for NETCONF config application
     return {
       success: true,
@@ -310,7 +310,7 @@ class ConfigSync {
     };
   }
 
-  async applyViaRestconf(routerConfig, configData) {
+  async applyViaRestconf(_routerConfig, _configData) {
     // Placeholder for RESTCONF config application
     return {
       success: true,

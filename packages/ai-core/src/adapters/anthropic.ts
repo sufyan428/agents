@@ -23,7 +23,7 @@ export class AnthropicAdapter implements Adapter {
     if (this.client) return this.client;
     let Anthropic: any;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       Anthropic = require('@anthropic-ai/sdk');
     } catch {
       throw new AiError(

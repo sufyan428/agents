@@ -311,7 +311,9 @@ class TrafficAnalyzer {
     // Check for IPs accessing many different ports
     for (const [sourceIp, portCount] of Object.entries(this.currentTraffic.sourceIpCounts)) {
       // Count unique ports accessed by this IP
-      const uniquePorts = portEntries.filter(([port, count]) => {
+      // Not yet consulted by any check below; kept as the shape a real
+      // per-IP port analysis would need. See the capability matrix.
+      const _uniquePorts = portEntries.filter(([_port, count]) => {
         // This is a simplified check - in production, you'd track which IPs accessed which ports
         return count > 0;
       }).length;
@@ -352,7 +354,7 @@ class TrafficAnalyzer {
     const sourceIpEntries = Object.entries(this.currentTraffic.sourceIpCounts);
 
     // Check for IPs with unusually high connection counts
-    const maxConnections = Math.max(...Object.values(this.currentTraffic.sourceIpCounts), 0);
+    const _maxConnections = Math.max(...Object.values(this.currentTraffic.sourceIpCounts), 0);
 
     for (const [sourceIp, connectionCount] of sourceIpEntries) {
       // Check if this IP has a disproportionate amount of traffic
@@ -386,7 +388,7 @@ class TrafficAnalyzer {
     }
 
     // Check for distributed attack pattern (many IPs with moderate traffic)
-    const highVolumeIps = sourceIpEntries.filter(([ip, count]) => count > 50);
+    const highVolumeIps = sourceIpEntries.filter(([_ip, count]) => count > 50);
     if (highVolumeIps.length > 20) {
       this.logger.error('Potential distributed DDoS attack detected', {
         high_volume_ips: highVolumeIps.length,

@@ -161,7 +161,7 @@ class PrometheusExporter {
    * which is two series instead of 2^32. The addresses themselves are still in
    * the logs and in /status, where high cardinality costs nothing.
    */
-  incrementFailedLogins(routerName, ip) {
+  incrementFailedLogins(routerName, _ip) {
     const known = routerName && routerName !== 'unknown' ? 'true' : 'false';
     this.metrics.failedLogins.inc({ router: routerName || 'unknown', known });
   }

@@ -1,5 +1,4 @@
 const axios = require('axios');
-const logger = require('../src/utils/logger');
 
 // Test configuration
 const ORCHESTRATOR_URL = 'http://localhost:8080';
@@ -105,7 +104,7 @@ async function testIndividualAgentHealth() {
             if (!response.data) {
                 throw new Error(`Agent ${agentName} health check returned no data`);
             }
-        } catch (error) {
+        } catch (_error) {
             // Agent might not be running in test environment
             console.log(`   ⚠ Warning: Agent ${agentName} not accessible (this is OK if not running)`);
         }
@@ -134,7 +133,7 @@ async function runAllTests() {
             await axios.get(`${ORCHESTRATOR_URL}/health`, { timeout: 2000 });
             ready = true;
             break;
-        } catch (error) {
+        } catch (_error) {
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }

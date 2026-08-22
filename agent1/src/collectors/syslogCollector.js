@@ -100,7 +100,6 @@ class SyslogCollector {
     const now = new Date();
     
     // Simple syslog parsing
-    const parts = message.split(/[\[\]]/);
     const priorityMatch = message.match(/^<(\d+)>/);
     
     return {

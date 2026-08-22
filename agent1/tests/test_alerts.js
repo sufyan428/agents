@@ -52,14 +52,14 @@ test('AlertManager should track alert history', () => {
 test('AlertManager should provide alert statistics', () => {
   const stats = alertManager.getAlertStats();
   assert.ok(typeof stats, 'object');
-  assert.ok(stats.hasOwnProperty('total'));
-  assert.ok(stats.hasOwnProperty('bySeverity'));
-  assert.ok(stats.hasOwnProperty('byMetric'));
-  assert.ok(stats.hasOwnProperty('byRouter'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'total'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'bySeverity'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'byMetric'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'byRouter'));
 });
 
 test('AlertManager should clear history', () => {
-  const initialStats = alertManager.getAlertStats();
+  const _initialStats = alertManager.getAlertStats();
   alertManager.clearHistory();
   const clearedStats = alertManager.getAlertStats();
   

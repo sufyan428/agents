@@ -6,7 +6,6 @@ declareSimulated(
   'per-class counters via CISCO-CLASS-BASED-QOS-MIB, or the vendor equivalent'
 );
 
-const winston = require('winston');
 
 class QosMonitor {
   constructor(config, logger) {

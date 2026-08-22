@@ -1,5 +1,4 @@
 const ping = require('ping');
-const Logger = require('../utils/logger');
 
 class PingMonitor {
   constructor(config, logger, metrics) {
@@ -115,7 +114,7 @@ class PingMonitor {
         if (result.alive) {
           latencies.push(result.time);
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip failed pings
       }
       

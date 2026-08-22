@@ -118,7 +118,7 @@ class AuthenticationMonitor {
   /**
    * Handle successful login attempt
    */
-  handleSuccessfulLogin(sourceIp, username, syslogData) {
+  handleSuccessfulLogin(sourceIp, username, _syslogData) {
     // Check if IP was previously suspicious
     if (this.suspiciousIps.has(sourceIp)) {
       this.logger.warn('Successful login from previously suspicious IP', {

@@ -7,7 +7,6 @@ declareSimulated(
 );
 
 const snmp = require('net-snmp');
-const winston = require('winston');
 
 class SnmpMonitor {
   constructor(config, logger) {
@@ -90,7 +89,7 @@ class SnmpMonitor {
       try {
         const resourceVars = [this.oids.cpuUsage, this.oids.memoryUsage];
         
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve, _reject) => {
           session.get(resourceVars, (error, varbinds) => {
             if (error) {
               this.logger.warn(`Could not get CPU/memory metrics: ${error.message}`);

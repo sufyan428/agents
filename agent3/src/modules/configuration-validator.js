@@ -417,7 +417,7 @@ class ConfigurationValidator {
 
     // Count total configuration fields
     const goldenConfig = this.goldenBaseline.router_configuration;
-    let totalFields = 0;
+    const totalFields = 0;
     this.countFields(goldenConfig, totalFields);
 
     // Calculate drift based on severity
@@ -442,7 +442,7 @@ class ConfigurationValidator {
   /**
    * Count total fields in configuration object
    */
-  countFields(obj, count) {
+  countFields(obj, _count) {
     if (typeof obj !== 'object' || obj === null) {
       return 1;
     }

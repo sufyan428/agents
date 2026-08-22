@@ -24,7 +24,6 @@ declareSimulated(
 
 const fs = require('fs');
 const path = require('path');
-const Logger = require('../utils/logger');
 
 class FailoverManager {
   constructor(config, logger, metrics) {

@@ -25,13 +25,23 @@
     "clean": "npm run clean --workspaces --if-present",
     "test:packages": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/analytics && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common && npm run test -w @ragent/router-sim",
     "test:agents": "npm test -w agent1 --if-present && npm test -w agent2 --if-present && npm test -w agent3 --if-present && npm test -w agent4 --if-present && npm test -w agent5 --if-present && npm test -w agent7 --if-present && npm test -w agent8 --if-present && npm test -w agent9 --if-present && npm test -w agent10 --if-present",
-    "sim": "npm start -w @ragent/router-sim"
+    "sim": "npm start -w @ragent/router-sim",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "9.17.0",
+    "eslint-config-prettier": "9.1.0",
+    "globals": "15.14.0",
+    "prettier": "3.4.2",
     "typescript": "^5.7.2",
-    "@types/node": "^22.10.2"
+    "typescript-eslint": "8.19.0"
   }
 }

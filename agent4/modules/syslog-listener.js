@@ -1,5 +1,4 @@
 const dgram = require('dgram');
-const winston = require('winston');
 
 class SyslogListener {
   constructor(config, logger) {

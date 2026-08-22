@@ -6,7 +6,6 @@ declareSimulated(
   'interface counter deltas from SNMP, or flow data'
 );
 
-const winston = require('winston');
 
 class TrafficBalancer {
   constructor(config, logger) {

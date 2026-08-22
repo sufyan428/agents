@@ -1,6 +1,5 @@
 const express = require('express'); // Router only; the server itself comes from the factory
 const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
-const path = require('path');
 const logger = require('./utils/logger');
 const ConfigLoader = require('./utils/configLoader');
 const Metrics = require('./utils/metrics');
@@ -121,7 +120,7 @@ class AutomationGovernanceAgent {
     this.setupApiRoutes();
 
     // Error handling
-    this.app.use((err, req, res, next) => {
+    this.app.use((err, req, res, _next) => {
       logger.error(`Unhandled error: ${err.message}`);
       res.status(500).json({
         error: 'Internal server error',
@@ -277,23 +276,26 @@ class AutomationGovernanceAgent {
         
         let report;
         switch (reportType) {
-          case 'compliance':
+          case 'compliance': {
             const policyResults = await this.policyChecker.checkAllRouters(this.routers);
             report = await this.auditReporter.generateComplianceReport(this.routers, policyResults);
             break;
+          }
           case 'audit':
             report = await this.auditReporter.generateAuditReport('24h');
             break;
-          case 'configuration':
+          case 'configuration': {
             const configChanges = this.configManager.getConfigChanges();
             const backups = await this.configManager.listBackups();
             report = await this.auditReporter.generateConfigurationReport(configChanges, backups);
             break;
-          case 'self_healing':
+          }
+          case 'self_healing': {
             const healingActions = this.selfHealing.getHealingActions();
             const healingMetrics = this.selfHealing.getMetrics();
             report = await this.auditReporter.generateSelfHealingReport(healingActions, healingMetrics);
             break;
+          }
           default:
             return res.status(400).json({ error: 'Invalid report type' });
         }

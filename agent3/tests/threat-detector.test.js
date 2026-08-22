@@ -99,7 +99,7 @@ test('an ongoing attack produces one finding, not one per packet', () => {
 });
 
 test('separate sources are tracked separately', () => {
-  const { d, findings } = make();
+  const { d } = make();
   const t = Date.UTC(2026, 0, 1);
   for (let i = 0; i < 6; i++) d.recordAuthFailure({ sourceIp: '10.0.0.1', router: 'R1', at: t + i * 100 });
   for (let i = 0; i < 2; i++) d.recordAuthFailure({ sourceIp: '10.0.0.2', router: 'R1', at: t + i * 100 });

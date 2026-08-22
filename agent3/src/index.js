@@ -14,10 +14,6 @@
  */
 
 const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
-const winston = require('winston');
-const yaml = require('yaml');
-const fs = require('fs');
-const path = require('path');
 
 // Import modules
 const ConfigLoader = require('./config/config-loader');
@@ -310,7 +306,7 @@ async function main() {
       agent.metrics.agentStatus.set(0);
     });
 
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on('unhandledRejection', (reason, _promise) => {
       agent.logger.error('Unhandled rejection:', reason);
     });
 

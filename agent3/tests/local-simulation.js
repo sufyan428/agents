@@ -109,7 +109,7 @@ class SecuritySimulation {
     console.log('\n=== Simulating Privilege Escalation Attempt ===');
     const username = 'lowprivuser';
     const sourceIp = '192.168.1.150';
-    const message = `<30>Jan 1 00:00:50 router sudo[12348]: ${username} : TTY=pts/0 ; PWD=/home/user ; USER=root ; COMMAND=/bin/bash`;
+    const message = `<30>Jan 1 00:00:50 router sudo[12348]: ${username} : TTY=pts/0 ; PWD=/home/user ; USER=root ; COMMAND=/bin/bash ; SRC=${sourceIp}`;
     this.sendSyslogMessage(message);
   }
 
