@@ -80,8 +80,16 @@ class ReportGenerator {
     }
   }
 
+  /**
+   * Report metadata without the bodies.
+   *
+   * The destructure exists to DROP `markdown` - a listing of twenty reports
+   * should not carry twenty full documents. eslint's ignoreRestSiblings option
+   * covers this idiom; renaming the key to satisfy the rule silently defeats
+   * the stripping, which is exactly what happened here once.
+   */
   getHistory() {
-    return this.history.map(({ _markdown, ...meta }) => meta);
+    return this.history.map(({ markdown, ...meta }) => meta);
   }
 
   getLatest() {

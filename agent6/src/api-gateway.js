@@ -100,6 +100,19 @@ class APIGateway {
       }
     });
 
+    // Incidents from previous runs, including ones that ended. The question an
+    // operator asks about a recurring fault is "has this happened before?",
+    // which the framework could not answer at all while state lived in memory.
+    app.get('/api/incidents/history', (req, res, next) => {
+      try {
+        const requested = Number.parseInt(req.query.limit, 10);
+        const limit = Math.min(Math.max(Number.isFinite(requested) ? requested : 50, 1), 500);
+        res.json({ success: true, incidents: correlationEngine.incidentHistory(limit) });
+      } catch (err) {
+        next(err);
+      }
+    });
+
     app.get('/api/config', (req, res, next) => {
       try {
         res.json({ success: true, config: configManager.getRedactedConfig() });

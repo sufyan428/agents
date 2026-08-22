@@ -6,6 +6,23 @@
 
 const ping = require('ping');
 
+/**
+ * ping flags differ by platform and the wrong ones fail silently.
+ *
+ * Linux and macOS use -c for count and -s for payload size. Windows ping uses
+ * -n and -l, and treats -c as something else entirely - it returns
+ * "Access denied. Option -c requires administrative privileges." So sending
+ * Linux flags on Windows made every host look dead with 0ms latency and 100%
+ * loss, and the agent then fell back to generated values. The numbers looked
+ * plausible and were entirely fictional.
+ */
+function pingFlags(count, packetSize) {
+  const windows = process.platform === 'win32';
+  const flags = windows ? ['-n', String(count)] : ['-c', String(count)];
+  if (packetSize) flags.push(windows ? '-l' : '-s', String(packetSize));
+  return flags;
+}
+
 class IcmpMonitor {
   constructor(config, targetHost, logger, metrics, alertDispatcher) {
     this.config = config;
@@ -74,7 +91,7 @@ class IcmpMonitor {
 
       const result = await ping.promise.probe(this.targetHost, {
         timeout: this.config.timeout / 1000, // Convert to seconds
-        extra: ['-c', '1'],
+        extra: pingFlags(1),
       });
 
       const responseTime = (Date.now() - startTime) / 1000;

@@ -13,7 +13,13 @@
  * @version 1.0.0
  */
 
-const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
+const {
+  createServer,
+  simulationHealthCheck,
+  FindingStore,
+  mountFindingsRoute,
+} = require('@ragent/agent-common');
+const ThreatDetector = require('./modules/threat-detector');
 
 // Import modules
 const ConfigLoader = require('./config/config-loader');
@@ -34,6 +40,9 @@ class SecurityIDAgent {
     this.logger = null;
     this.metrics = null;
     this.modules = {};
+    // Normalized findings, polled by agent6 for cross-agent correlation.
+    this.findings = new FindingStore({ resolveAfterMs: 10 * 60 * 1000 });
+    this.threatDetector = null;
     this.running = false;
     this.server = null;
   }
@@ -70,12 +79,22 @@ class SecurityIDAgent {
   }
 
   initializeModules() {
+    // Rate-based threat detection over real received syslog. This is what
+    // distinguishes an attack from five failures spread across a working day,
+    // and it emits the normalized findings agent6 correlates.
+    this.threatDetector = new ThreatDetector({
+      findingStore: this.findings,
+      logger: this.logger,
+      config: this.config.security.authentication,
+    });
+
     // Authentication Monitoring Module
     this.modules.authentication = new AuthenticationMonitor(
       this.config.security.authentication,
       this.logger,
       this.metrics,
       this.modules.alertDispatcher,
+      this.threatDetector,
     );
 
     // Traffic Analysis Module
@@ -213,6 +232,7 @@ class SecurityIDAgent {
     });
 
     const app = this.agentServer.app;
+    mountFindingsRoute(app, this.findings, 'agent3-security');
 
     // The agent's own registry carries the security counters; the factory
     // registry only has process metrics, so both are exposed.

@@ -101,6 +101,16 @@ jobs:
       - name: Boot the framework and verify every core agent comes up
         run: bash scripts/smoke-test.sh
 
+      - name: Fault injection reaches an agent and becomes a correlated incident
+        run: |
+          cd agent6 && AGENT_API_TOKEN=ci-test-token node src/index.js > /tmp/orchestrator.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:8080/health >/dev/null && break
+            sleep 2
+          done
+          sleep 25
+          node tests/e2e-correlation.js
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4

@@ -21,7 +21,6 @@ npm-debug.log*
 Thumbs.db
 
 # Test files
-test-simulation.js
 
 # Temporary files
 tmp/

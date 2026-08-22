@@ -1,5 +1,10 @@
 const express = require('express'); // Router only; the server itself comes from the factory
-const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
+const {
+  createServer,
+  simulationHealthCheck,
+  FindingStore,
+  mountFindingsRoute,
+} = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const ConfigLoader = require('./utils/configLoader');
 const Metrics = require('./utils/metrics');
@@ -25,6 +30,8 @@ class AutomationGovernanceAgent {
     this.selfHealing = null;
     this.auditReporter = null;
     this.taskScheduler = null;
+    // Normalized findings, polled by agent6 for cross-agent correlation.
+    this.findings = new FindingStore({ resolveAfterMs: 15 * 60 * 1000 });
   }
 
   async initialize() {
@@ -437,6 +444,7 @@ class AutomationGovernanceAgent {
 
     this.app = this.agentServer.app;
     this.setupExpress();
+    mountFindingsRoute(this.app, this.findings, 'agent5-automation');
     await this.agentServer.listen();
     logger.info(`API: http://${host}:${port}/api`);
   }

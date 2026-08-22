@@ -9,7 +9,9 @@
  */
 
 class AuthenticationMonitor {
-  constructor(config, logger, metrics, alertDispatcher) {
+  constructor(config, logger, metrics, alertDispatcher, threatDetector = null) {
+    /** Rate-based detector; null disables it without changing this class. */
+    this.threatDetector = threatDetector;
     this.config = config;
     this.logger = logger;
     this.metrics = metrics;
@@ -39,6 +41,17 @@ class AuthenticationMonitor {
       // Detect failed login attempts
       if (this.isFailedLogin(message)) {
         this.handleFailedLogin(sourceIp, username, syslogData);
+
+        // Rate-based detection, which is what distinguishes an attack from
+        // five failures spread across a working day. Emits normalized findings
+        // that agent6 correlates with what the other agents are seeing.
+        if (this.threatDetector) {
+          this.threatDetector.recordAuthFailure({
+            sourceIp,
+            username,
+            router: syslogData.hostname || syslogData.source || 'unknown',
+          });
+        }
       }
 
       // Detect successful login attempts

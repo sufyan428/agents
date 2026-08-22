@@ -1,4 +1,4 @@
-const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck, mountFindingsRoute } = require('@ragent/agent-common');
 
 class ExpressServer {
   constructor(
@@ -9,7 +9,10 @@ class ExpressServer {
     failoverManager,
     configSync,
     syslogListener,
+    findings = null,
   ) {
+    /** Normalized findings, exposed at /api/findings for agent6 to correlate. */
+    this.findings = findings;
     this.config = config;
     this.logger = logger;
     this.metrics = metrics;
@@ -254,6 +257,7 @@ class ExpressServer {
 
     this.app = this.agentServer.app;
     this.setupRoutes(this.app);
+    if (this.findings) mountFindingsRoute(this.app, this.findings, 'agent2-resilience');
     return this.agentServer.listen();
   }
 

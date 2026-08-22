@@ -161,11 +161,11 @@ curl -s localhost:9093/health | jq '.simulated, .checks[] | select(.name=="simul
 | 2 resilience | **Failover execution** | **Simulated** | Records success; changes no routing state. Needs VRRP/BGP/vendor API |
 | 2 resilience | Backup availability / primary stability checks | Simulated | Always return "available" and "stable" |
 | 2 resilience | Config fetch and apply via NETCONF/RESTCONF | Simulated | Returns placeholders |
-| 3 security | Syslog auth-failure and port-scan detection | Real | Real parsing of real input |
+| 3 security | Syslog auth-failure, brute force, spraying and port-scan detection | Real | Rate-based over real received syslog; emits findings agent6 correlates |
 | 3 security | SNMP trap ingestion | Partial | |
 | 3 security | **Config validation** | **Simulated** | Validates a generated placeholder, not the device config |
 | 3 security | Traffic volume analysis | Simulated | Syslog carries no volume data; no volume is now fabricated. Needs NetFlow/sFlow/IPFIX |
-| 4 performance | ICMP latency / jitter / loss | Real | Falls back to generated values only when unreachable |
+| 4 performance | ICMP latency percentiles, RFC 3550 jitter, burst-aware loss | Real | Falls back to generated values only when the host is unreachable |
 | 4 performance | SNMP performance counters | Partial | Falls back to generated values when unreachable |
 | 4 performance | **QoS class metrics** | **Simulated** | No real collection path exists. Needs CISCO-CLASS-BASED-QOS-MIB |
 | 4 performance | Traffic distribution / balancing | Simulated | Needs interface counter deltas or flow data |
@@ -177,6 +177,8 @@ curl -s localhost:9093/health | jq '.simulated, .checks[] | select(.name=="simul
 | 5 governance | Self-healing writes | Real, gated | Genuinely writes SNMP. Off by default, allowlisted, dry-run by default |
 | 5 governance | Firmware / CVE check | Simulated | Hardcoded version table, no advisory feed |
 | 6 orchestrator | Process supervision, health, config distribution | Real | |
+| 6 orchestrator | Cross-agent incident correlation | Real | Deterministic; no API key required |
+| 6 orchestrator | Incident history across restarts | Real | SQLite |
 | 7–10 AI layer | Correlation, reporting, advice, chat | Real | Real model calls. Quality of input depends on the rows above |
 
 **The consequence worth stating plainly:** where an input is simulated, anything

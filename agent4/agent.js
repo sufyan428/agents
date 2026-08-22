@@ -2,7 +2,13 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
 const winston = require('winston');
-const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
+const {
+  createServer,
+  simulationHealthCheck,
+  FindingStore,
+  mountFindingsRoute,
+} = require('@ragent/agent-common');
+const QualityAnalyzer = require('./modules/quality-analyzer');
 const promClient = require('prom-client');
 
 // Import modules
@@ -12,6 +18,11 @@ const SyslogListener = require('./modules/syslog-listener');
 const QosMonitor = require('./modules/qos-monitor');
 const TrafficBalancer = require('./modules/traffic-balancer');
 const OptimizationEngine = require('./modules/optimization-engine');
+
+// Normalized findings for agent6 to correlate, and the link-quality analysis
+// that turns raw probes into percentiles, RFC 3550 jitter and burst-aware loss.
+const findings = new FindingStore({ resolveAfterMs: 10 * 60 * 1000 });
+let qualityAnalyzer = null;
 
 // Load configuration
 // Resolved against this file, not the working directory. Launched from
@@ -203,6 +214,44 @@ async function monitorAndOptimize() {
       trafficImbalance: trafficMetrics.imbalance || 0,
     };
 
+    // Feed every probe into the quality analyzer, then let it decide whether
+    // anything is worth reporting. This is what turns raw samples into
+    // percentiles, RFC 3550 jitter and burst-aware loss - a mean hides the
+    // tail that users actually notice.
+    if (!qualityAnalyzer) {
+      qualityAnalyzer = new QualityAnalyzer({
+        findingStore: findings,
+        logger,
+        thresholds: {
+          p95LatencyMs: config.optimization?.threshold_latency ?? 150,
+          jitterMs: config.optimization?.threshold_jitter ?? 30,
+        },
+      });
+    }
+
+    for (const dest of icmpMetrics.destinations || []) {
+      const lost = (icmpMetrics.packetLoss?.[dest] ?? 0) >= 100;
+      qualityAnalyzer.recordProbe(dest, {
+        latencyMs: lost ? null : icmpMetrics.latency?.[dest],
+        lost,
+      });
+      qualityAnalyzer.evaluate(dest, config.router.host);
+    }
+
+    // Interface utilisation feeds the saturation forecast.
+    for (const iface of snmpMetrics.interfaces || []) {
+      if (Number.isFinite(iface.utilisation)) {
+        qualityAnalyzer.recordUtilisation(config.router.host, iface.name, iface.utilisation);
+        qualityAnalyzer.evaluateSaturation(config.router.host, iface.name);
+      }
+    }
+
+    // Resolve findings whose condition has stopped recurring, so an operator
+    // sees an incident end rather than only ever seeing it begin.
+    for (const r of findings.sweep()) {
+      logger.info(`Finding resolved: ${r.finding.title} after ${Math.round(r.durationMs / 1000)}s`);
+    }
+
     // Calculate efficiency score
     currentMetrics.efficiencyScore = calculateEfficiencyScore(currentMetrics);
 
@@ -270,6 +319,7 @@ const agentServer = createServer({
 });
 
 const app = agentServer.app;
+mountFindingsRoute(app, findings, 'agent4-performance');
 
 // The performance registry sits alongside the factory's process metrics.
 app.get('/metrics/performance', async (req, res, next) => {

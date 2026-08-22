@@ -110,13 +110,10 @@ class CorrelationEngine {
 
   pushHistory() {
     for (const c of this.clusters) {
-      if (c.symptoms.length === 0) continue;
-      const existing = this.history.find((h) => h.id === c.id);
-      if (existing) {
-        existing.lastActivityAt = c.lastActivityAt;
-        existing.findingCount = c.all.length;
-        continue;
-      }
+      // Every incident is persisted, including one with a single finding. A
+      // lone critical finding is still something an operator needs to look up
+      // later: "has this happened before?" does not become a less useful
+      // question just because nothing else correlated with it.
       this.store.saveIncident({
         id: c.id,
         entity: c.entity,
@@ -131,6 +128,15 @@ class CorrelationEngine {
         lastActivityAt: c.lastActivityAt,
       });
 
+      // The in-memory summary is a different thing: it is the "what is
+      // currently interesting" list, so it keeps the multi-finding filter.
+      if (c.symptoms.length === 0) continue;
+      const existing = this.history.find((h) => h.id === c.id);
+      if (existing) {
+        existing.lastActivityAt = c.lastActivityAt;
+        existing.findingCount = c.all.length;
+        continue;
+      }
       this.history.push({
         id: c.id,
         entity: c.entity,

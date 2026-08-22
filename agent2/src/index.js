@@ -10,6 +10,7 @@ const FailoverManager = require('./modules/failoverManager');
 const ConfigSync = require('./modules/configSync');
 const SyslogListener = require('./modules/syslogListener');
 const ExpressServer = require('./server/expressServer');
+const { FindingStore } = require('@ragent/agent-common');
 
 class ResilienceFailoverAgent {
   constructor() {
@@ -25,6 +26,8 @@ class ResilienceFailoverAgent {
     this.syslogListener = null;
     this.expressServer = null;
     this.isRunning = false;
+    // Normalized findings, polled by agent6 for cross-agent correlation.
+    this.findings = new FindingStore({ resolveAfterMs: 10 * 60 * 1000 });
   }
 
   async initialize() {
@@ -79,6 +82,7 @@ class ResilienceFailoverAgent {
         this.failoverManager,
         this.configSync,
         this.syslogListener,
+        this.findings,
       );
       this.logger.info('Express server initialized');
 
@@ -122,6 +126,7 @@ class ResilienceFailoverAgent {
 
       // Start heartbeat checker
       this.heartbeatChecker.start((event) => {
+        this.reportFailoverFinding(event);
         this.handleFailoverEvent(event);
       });
 
@@ -178,6 +183,40 @@ class ResilienceFailoverAgent {
     }
   }
 
+  /**
+   * Turns a failover event into a normalized finding.
+   *
+   * This is what lets agent6 group "router unreachable" with the SNMP timeout
+   * agent1 saw and the latency spike agent4 saw, into one incident rather than
+   * three. Reachability is the deepest causal layer, so it becomes the root
+   * cause of that cluster.
+   */
+  reportFailoverFinding(event) {
+    const host = event.type === 'failover' ? this.config.primary?.host : this.config.backup?.host;
+    const entity = { type: 'router', id: host || 'unknown', name: host || 'unknown' };
+
+    if (event.type === 'failover') {
+      this.findings.report({
+        agent: 'agent2-resilience',
+        kind: 'device_unreachable',
+        severity: 'critical',
+        entity,
+        title: `Primary router ${host} stopped responding`,
+        detail: event.reason || 'Heartbeat threshold exceeded; failover triggered.',
+        evidence: { event: event.type, reason: event.reason ?? null },
+        tags: ['failover'],
+      });
+      this.logger.warn(`FINDING [critical] Primary router ${host} stopped responding`);
+    } else if (event.type === 'failback') {
+      this.findings.clear(
+        'agent2-resilience',
+        'device_unreachable',
+        { type: 'router', id: this.config.primary?.host || 'unknown' },
+        'primary_recovered',
+      );
+    }
+  }
+
   async handleFailoverEvent(event) {
     this.logger.info('Handling failover event', { event });
 
@@ -222,6 +261,8 @@ class ResilienceFailoverAgent {
       this.failoverManager.saveState();
 
       this.isRunning = false;
+      // Normalized findings, polled by agent6 for cross-agent correlation.
+      this.findings = new FindingStore({ resolveAfterMs: 10 * 60 * 1000 });
       this.logger.info('Resilience & Failover Agent stopped');
     } catch (error) {
       this.logger.error('Error during agent shutdown', {

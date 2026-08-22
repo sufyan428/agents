@@ -8,6 +8,23 @@ declareSimulated(
 
 const ping = require('ping');
 
+/**
+ * ping flags differ by platform and the wrong ones fail silently.
+ *
+ * Linux and macOS use -c for count and -s for payload size. Windows ping uses
+ * -n and -l, and treats -c as something else entirely - it returns
+ * "Access denied. Option -c requires administrative privileges." So sending
+ * Linux flags on Windows made every host look dead with 0ms latency and 100%
+ * loss, and the agent then fell back to generated values. The numbers looked
+ * plausible and were entirely fictional.
+ */
+function pingFlags(count, packetSize) {
+  const windows = process.platform === 'win32';
+  const flags = windows ? ['-n', String(count)] : ['-c', String(count)];
+  if (packetSize) flags.push(windows ? '-l' : '-s', String(packetSize));
+  return flags;
+}
+
 class IcmpTracker {
   constructor(config, logger) {
     this.config = config;
@@ -73,7 +90,7 @@ class IcmpTracker {
   async pingDestination(host) {
     const config = {
       timeout: this.config.icmp.timeout / 1000,
-      extra: ['-c', '4', '-s', this.config.icmp.packet_size.toString()],
+      extra: pingFlags(4, this.config.icmp.packet_size),
       min_reply: 1, // Consider success if at least 1 reply received
     };
 
@@ -88,7 +105,13 @@ class IcmpTracker {
         };
       }
 
-      const currentLatency = result.time;
+      // result.avg is the average across the probes; result.time is a single
+      // sample. Reporting one sample as the average is how a link with a bad
+      // tail looks healthy.
+      const parsedAvg = Number.parseFloat(result.avg);
+      const currentLatency = Number.isFinite(parsedAvg)
+        ? parsedAvg
+        : Number.parseFloat(result.time) || 0;
       const jitter = this.calculateJitter(host, currentLatency);
 
       // Calculate packet loss
@@ -96,8 +119,12 @@ class IcmpTracker {
 
       return {
         avg: currentLatency,
+        min: Number.parseFloat(result.min) || currentLatency,
+        max: Number.parseFloat(result.max) || currentLatency,
         jitter: jitter,
         packetLoss: packetLoss,
+        alive: true,
+        measured: true,
       };
     } catch (_error) {
       // Fallback to simulated data if ping fails (e.g., in containerized environment)

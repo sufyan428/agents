@@ -41,7 +41,12 @@ export default [
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
       ],
       // The Anthropic adapter loads its SDK lazily and untyped by design.
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -51,7 +56,7 @@ export default [
 
   // ---- CommonJS agents and tools --------------------------------------
   {
-    files: ['agent*/**/*.js', 'tools/**/*.js', 'scripts/**/*.js'],
+    files: ['agent*/**/*.js', 'tools/**/*.js', 'scripts/**/*.js', 'tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',
@@ -63,6 +68,10 @@ export default [
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          // The `const { drop, ...rest } = obj` idiom exists to discard a key.
+          // Without this, the rule flags the discarded name and "fixing" it by
+          // renaming silently defeats the discard - which happened once here.
+          ignoreRestSiblings: true,
           // A catch binding that is deliberately ignored is common and fine -
           // `catch { }` is not always available where the error shape matters
           // for readability.
@@ -92,7 +101,7 @@ export default [
 
   // Tests and the simulator print to the console by design.
   {
-    files: ['**/tests/**/*.js', '**/*.test.js', 'tools/router-sim/**/*.js'],
+    files: ['**/tests/**/*.js', 'tests/**/*.js', '**/*.test.js', 'tools/router-sim/**/*.js'],
     rules: { 'no-console': 'off' },
   },
 
