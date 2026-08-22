@@ -197,7 +197,10 @@ class ConfigurationValidator {
         },
         timeout: 10000,
         httpsAgent: new (require('https').Agent)({
-          rejectUnauthorized: false // Only for demo - use proper certificates in production
+          // Certificate verification on by default; this request carries
+          // RESTCONF credentials. ROUTER_TLS_INSECURE=true opts out for a lab
+          // device with a self-signed cert, deliberately and visibly.
+          rejectUnauthorized: process.env.ROUTER_TLS_INSECURE !== 'true'
         })
       });
 

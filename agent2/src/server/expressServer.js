@@ -1,4 +1,4 @@
-const express = require('express');
+const { createServer } = require('@ragent/agent-common');
 const Logger = require('../utils/logger');
 
 class ExpressServer {
@@ -11,64 +11,38 @@ class ExpressServer {
     this.configSync = configSync;
     this.syslogListener = syslogListener;
     
-    this.app = express();
-    this.server = null;
-    
-    this.setupMiddleware();
-    this.setupRoutes();
+    // Built in start(), so the port and bind host from config are available.
+    this.agentServer = null;
+    this.app = null;
   }
 
-  setupMiddleware() {
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
-    
-    // Request logging
-    this.app.use((req, res, next) => {
-      this.logger.debug(`${req.method} ${req.path}`, {
-        ip: req.ip
-      });
-      next();
-    });
-  }
-
-  setupRoutes() {
+  setupRoutes(app) {
     const metricsConfig = this.config.metrics || {};
     
-    // Health check endpoint
-    this.app.get(metricsConfig.health_endpoint || '/health', (req, res) => {
-      const health = this.getHealthStatus();
-      const statusCode = health.healthy ? 200 : 503;
-      res.status(statusCode).json(health);
-    });
-
-    // Metrics endpoint for Prometheus
-    this.app.get(metricsConfig.endpoint || '/metrics', async (req, res) => {
+    // /health and /metrics come from the shared factory. The agent's own
+    // Prometheus registry is still exposed, under a distinct path, because it
+    // holds the failover counters the factory registry knows nothing about.
+    app.get('/metrics/failover', async (req, res, next) => {
       try {
-        const metrics = await this.metrics.getMetrics();
         res.set('Content-Type', this.metrics.getContentType());
-        res.send(metrics);
-      } catch (error) {
-        this.logger.error('Failed to get metrics', {
-          error: error.message
-        });
-        res.status(500).json({ error: 'Failed to get metrics' });
-      }
+        res.send(await this.metrics.getMetrics());
+      } catch (error) { next(error); }
     });
 
     // Status endpoint
-    this.app.get('/status', (req, res) => {
+    app.get('/status', (req, res) => {
       const status = this.getStatus();
       res.json(status);
     });
 
     // Failover history endpoint
-    this.app.get('/failover/history', (req, res) => {
+    app.get('/failover/history', (req, res) => {
       const history = this.failoverManager.getStatus();
       res.json(history);
     });
 
     // Manual failover endpoint (use with caution)
-    this.app.post('/failover/manual', async (req, res) => {
+    app.post('/failover/manual', async (req, res) => {
       try {
         const { target } = req.body;
         
@@ -97,13 +71,13 @@ class ExpressServer {
     });
 
     // Config sync status endpoint
-    this.app.get('/sync/status', (req, res) => {
+    app.get('/sync/status', (req, res) => {
       const status = this.configSync.getSyncStatus();
       res.json(status);
     });
 
     // Trigger manual config sync
-    this.app.post('/sync/trigger', async (req, res) => {
+    app.post('/sync/trigger', async (req, res) => {
       try {
         const { reason = 'manual-trigger' } = req.body;
         const result = await this.configSync.triggerManualSync(reason);
@@ -120,26 +94,26 @@ class ExpressServer {
     });
 
     // Syslog stats endpoint
-    this.app.get('/syslog/stats', (req, res) => {
+    app.get('/syslog/stats', (req, res) => {
       const stats = this.syslogListener.getStats();
       res.json(stats);
     });
 
     // Heartbeat status endpoint
-    this.app.get('/heartbeat/status', (req, res) => {
+    app.get('/heartbeat/status', (req, res) => {
       const status = this.heartbeatChecker.getStatus();
       res.json(status);
     });
 
     // Router configuration endpoint
-    this.app.get('/config', (req, res) => {
+    app.get('/config', (req, res) => {
       // Return sanitized config (no passwords)
       const sanitizedConfig = this.sanitizeConfig(this.config);
       res.json(sanitizedConfig);
     });
 
     // Reload configuration endpoint
-    this.app.post('/config/reload', (req, res) => {
+    app.post('/config/reload', (req, res) => {
       try {
         // This would reload the configuration from file
         res.json({
@@ -154,26 +128,6 @@ class ExpressServer {
       }
     });
 
-    // 404 handler
-    this.app.use((req, res) => {
-      res.status(404).json({
-        error: 'Not Found',
-        path: req.path
-      });
-    });
-
-    // Error handler
-    this.app.use((err, req, res, next) => {
-      this.logger.error('Express error', {
-        error: err.message,
-        stack: err.stack,
-        path: req.path
-      });
-      
-      res.status(err.status || 500).json({
-        error: err.message || 'Internal Server Error'
-      });
-    });
   }
 
   getHealthStatus() {
@@ -182,9 +136,8 @@ class ExpressServer {
     const syncStatus = this.configSync.getSyncStatus();
     
     const healthy = (
-      (heartbeatStatus.primary.health === 'healthy' ||
-       heartbeatStatus.backup.health === 'healthy') &&
-      this.server !== null
+      heartbeatStatus.primary.health === 'healthy' ||
+      heartbeatStatus.backup.health === 'healthy'
     );
 
     return {
@@ -240,45 +193,56 @@ class ExpressServer {
   }
 
   start() {
-    const port = this.config.metrics?.port || 9090;
-    
-    return new Promise((resolve, reject) => {
-      this.server = this.app.listen(port, (err) => {
-        if (err) {
-          this.logger.error('Failed to start Express server', {
-            error: err.message
-          });
-          reject(err);
-        } else {
-          this.logger.info('Express server started', {
-            port,
-            health: `http://localhost:${port}/health`,
-            metrics: `http://localhost:${port}/metrics`,
-            status: `http://localhost:${port}/status`
-          });
-          resolve();
-        }
-      });
+    const port = this.config.server?.port || this.config.metrics?.port || 9091;
+    const host = process.env.BIND_HOST || this.config.server?.host || '127.0.0.1';
+    const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
 
-      this.server.on('error', (err) => {
-        this.logger.error('Express server error', {
-          error: err.message
+    if (!token) {
+      this.logger.warn(
+        'AGENT_API_TOKEN is not set. POST /failover/manual and /sync/trigger will ' +
+        'refuse with 503 - an unauthenticated caller must never be able to flip a router.'
+      );
+    }
+
+    this.agentServer = createServer({
+      agent: 'agent2-resilience',
+      logger: this.logger,
+      port,
+      host,
+      authToken: token,
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      healthChecks: () => {
+        const hb = this.heartbeatChecker.getStatus();
+        // Router reachability is DEGRADED, not unhealthy. The agent is doing
+        // its job correctly by reporting that a device is unreachable; saying
+        // "unhealthy" made supervisors restart a working process and drove the
+        // AI layer to treat every poll as an anomaly worth a model call.
+        const routerCheck = (name, state) => ({
+          name,
+          status: state.health === 'healthy' ? 'healthy' : 'degraded',
+          message: state.health === 'healthy' ? undefined : `${name} is ${state.health}`,
+          simulated: false
         });
-      });
+        return [
+          routerCheck('primary_router', hb.primary),
+          routerCheck('backup_router', hb.backup),
+          {
+            name: 'heartbeat_loop',
+            status: hb.isActive ? 'healthy' : 'unhealthy',
+            message: hb.isActive ? undefined : 'heartbeat loop is not running',
+            simulated: false
+          }
+        ];
+      }
     });
+
+    this.app = this.agentServer.app;
+    this.setupRoutes(this.app);
+    return this.agentServer.listen();
   }
 
   stop() {
-    return new Promise((resolve) => {
-      if (this.server) {
-        this.server.close(() => {
-          this.logger.info('Express server stopped');
-          resolve();
-        });
-      } else {
-        resolve();
-      }
-    });
+    return this.agentServer ? this.agentServer.close() : Promise.resolve();
   }
 }
 

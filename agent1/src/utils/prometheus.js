@@ -74,7 +74,8 @@ class PrometheusExporter {
       failedLogins: new client.Counter({
         name: 'router_failed_logins_total',
         help: 'Total failed login attempts',
-        labelNames: ['router', 'ip'],
+        // No `ip` label - see incrementFailedLogins for why.
+        labelNames: ['router', 'known'],
         registers: [this.register]
       }),
 
@@ -149,8 +150,20 @@ class PrometheusExporter {
   /**
    * Increment failed logins counter
    */
+  /**
+   * Counts a failed login.
+   *
+   * The source IP is deliberately NOT a label. It arrives from an
+   * unauthenticated UDP syslog packet, so it is both attacker-controlled and
+   * trivially spoofable - using it as a label meant anyone who could reach the
+   * syslog port could mint unbounded time series and take down Prometheus.
+   * Only `known` (whether the source matches a configured router) is recorded,
+   * which is two series instead of 2^32. The addresses themselves are still in
+   * the logs and in /status, where high cardinality costs nothing.
+   */
   incrementFailedLogins(routerName, ip) {
-    this.metrics.failedLogins.inc({ router: routerName, ip });
+    const known = routerName && routerName !== 'unknown' ? 'true' : 'false';
+    this.metrics.failedLogins.inc({ router: routerName || 'unknown', known });
   }
 
   /**

@@ -316,7 +316,7 @@ class ConfigManager {
                 health_path: '/health'
             },
             governance: {
-                auto_heal: this.masterConfig.agents.automation.auto_heal,
+                auto_heal: this.masterConfig.agents.automation.auto_heal === true,
                 enforce_policies: true,
                 backup_before_changes: true,
                 approval_required: false
@@ -352,6 +352,10 @@ class ConfigManager {
             },
             self_healing: {
                 enabled: true,
+                // Even with auto_heal on, nothing is written to a device unless
+                // the action is named here AND dry_run is explicitly false.
+                dry_run: true,
+                allowed_actions: [],
                 max_retries: 3,
                 retry_delay: 60,
                 notify_on_failure: true

@@ -8,6 +8,11 @@ const logger = require('../utils/logger');
 const config = require('../utils/config');
 const prometheus = require('../utils/prometheus');
 
+/** Distinct source addresses tracked before least-recently-seen eviction. */
+const MAX_TRACKED_SOURCES = 1000;
+/** Longest syslog line accepted; anything larger is truncated, not buffered. */
+const MAX_MESSAGE_BYTES = 8 * 1024;
+
 class SyslogCollector {
   constructor() {
     this.server = null;
@@ -54,7 +59,12 @@ class SyslogCollector {
    */
   handleSyslogMessage(msg, rinfo) {
     try {
-      const message = msg.toString('utf8');
+      // RFC 5424 allows large messages; this listener is reachable by anyone
+      // who can send UDP to the port, so oversized input is truncated rather
+      // than retained in the in-memory event ring.
+      const message = msg.length > MAX_MESSAGE_BYTES
+        ? `${msg.subarray(0, MAX_MESSAGE_BYTES).toString('utf8')}...[truncated]`
+        : msg.toString('utf8');
       const event = this.parseSyslogMessage(message, rinfo);
       
       this.stats.totalEvents++;
@@ -141,10 +151,23 @@ class SyslogCollector {
    */
   handleFailedLogin(event, message) {
     this.stats.failedLogins++;
-    
-    // Track failed logins by source IP
+
+    // Track failed logins by source IP, with a hard cap on distinct sources.
+    // These addresses come from unauthenticated UDP and can be spoofed, so an
+    // unbounded Map here was a remote memory-exhaustion vector: one flood with
+    // randomised source addresses grew it without limit. At the cap the
+    // least-recently-seen entry is evicted, so the map tracks the active
+    // offenders rather than every address ever seen.
     const sourceIP = event.source;
     const currentCount = this.failedLogins.get(sourceIP) || 0;
+    if (currentCount === 0 && this.failedLogins.size >= MAX_TRACKED_SOURCES) {
+      const oldest = this.failedLogins.keys().next().value;
+      this.failedLogins.delete(oldest);
+      logger.debug(`Failed-login source table full, evicted ${oldest}`);
+    }
+    // Re-inserting moves the key to the end, giving Map insertion order
+    // least-recently-seen-first semantics for the eviction above.
+    this.failedLogins.delete(sourceIP);
     this.failedLogins.set(sourceIP, currentCount + 1);
 
     // Update Prometheus metrics
@@ -213,11 +236,13 @@ class SyslogCollector {
       return now - eventTime <= maxAge;
     });
 
-    // Clear old failed login counts
+    // Decay the failed-login table. Previously counts over 100 were halved and
+    // nothing was ever removed, so the Map only ever grew. Entries now decay
+    // and are dropped once they reach zero.
     for (const [ip, count] of this.failedLogins.entries()) {
-      if (count > 100) {
-        this.failedLogins.set(ip, Math.floor(count / 2));
-      }
+      const decayed = Math.floor(count / 2);
+      if (decayed <= 0) this.failedLogins.delete(ip);
+      else this.failedLogins.set(ip, decayed);
     }
 
     logger.debug(`Cleared old events, remaining: ${this.events.length}`);

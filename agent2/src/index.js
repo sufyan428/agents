@@ -94,20 +94,11 @@ class ResilienceFailoverAgent {
       );
       this.logger.info('Express server initialized');
 
-      // Setup failover callback
-      this.heartbeatChecker.start(async (event) => {
-        this.logger.info('Failover callback triggered', { event });
-        
-        // Update config sync's active router
-        if (event.type === 'failover') {
-          this.configSync.setCurrentActiveRouter('backup');
-        } else if (event.type === 'failback') {
-          this.configSync.setCurrentActiveRouter('primary');
-        }
-
-        // Handle failover
-        await this.failoverManager.handleFailover(event);
-      });
+      // The heartbeat loop is started exactly once, in start(). It used to be
+      // started here as well, with a different callback: the second call
+      // overwrote this.cronJob and orphaned the first loop, so two heartbeat
+      // loops ran concurrently, every failover event was handled twice, and
+      // stop() could only ever cancel one of them.
 
       this.logger.info('All components initialized successfully');
       return true;

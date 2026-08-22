@@ -69,7 +69,11 @@ agents:
   automation:
     enabled: true
     port: 9094
-    auto_heal: true                   # Automatically fix compliance violations
+    # OFF by default. When enabled, agent5 writes configuration to live network
+    # hardware without a human in the loop. Turning it on is a deliberate act,
+    # and even then every action must be named in self_healing.allowed_actions
+    # and dry_run must be set to false. See agent5/config.yml.
+    auto_heal: false
     compliance_check_interval: 300    # seconds (5 minutes)
 
   # Agent 7: AI Correlation & Reasoning (optional, BYOK)

@@ -3,7 +3,7 @@
  * Orchestrates collectors, processors, and alerts
  */
 
-const express = require('express');
+const { createServer } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const config = require('./utils/config');
 const prometheus = require('./utils/prometheus');
@@ -12,11 +12,13 @@ const { thresholdProcessor } = require('./processors');
 
 class MonitoringAgent {
   constructor() {
-    this.app = express();
-    this.port = process.env.PORT || 3000;
-    // We explicitly define the host as 0.0.0.0 to allow Docker access
-    this.host = '0.0.0.0'; 
-    this.metricsPort = process.env.METRICS_PORT || 9090;
+    this.server = null;
+    this.app = null;
+    this.port = Number(process.env.PORT) || 3000;
+    // Loopback by default. This listener exposes metrics, alert history and a
+    // test-alert trigger; reaching it from another host is opt-in via
+    // BIND_HOST, and the Docker image sets that explicitly.
+    this.host = process.env.BIND_HOST || '127.0.0.1';
     this.running = false;
     this.pollIntervals = new Map();
   }
@@ -38,8 +40,7 @@ class MonitoringAgent {
       snmpCollector.initialize();
       syslogCollector.initialize();
 
-      // Setup Express server
-      this.setupExpress();
+      // The HTTP server is built in start(), once config is loaded.
 
       logger.info('Monitoring Agent initialized successfully');
     } catch (error) {
@@ -51,33 +52,13 @@ class MonitoringAgent {
   /**
    * Setup Express server for metrics and health
    */
-  setupExpress() {
-    // Metrics endpoint for Prometheus
-    this.app.get('/metrics', async (req, res) => {
-      try {
-        const metrics = await prometheus.getMetrics();
-        res.set('Content-Type', prometheus.register.contentType);
-        res.send(metrics);
-      } catch (error) {
-        logger.error(`Failed to get metrics: ${error.message}`);
-        res.status(500).send('Failed to get metrics');
-      }
-    });
-
-    // Health check endpoint
-    this.app.get('/health', (req, res) => {
-      res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        routersMonitored: config.getEnabledRouters().length
-      });
-    });
+  setupRoutes(app) {
+    // /health and /metrics are provided by the shared server factory.
 
     // Status endpoint
-    this.app.get('/status', (req, res) => {
+    app.get('/status', (req, res) => {
       const { alertManager } = require('./alerts');
-      
+
       res.json({
         status: 'running',
         timestamp: new Date().toISOString(),
@@ -92,16 +73,21 @@ class MonitoringAgent {
     });
 
     // Alert history endpoint
-    this.app.get('/alerts', (req, res) => {
+    app.get('/alerts', (req, res) => {
       const { alertManager } = require('./alerts');
-      const limit = parseInt(req.query.limit) || 100;
+      // Clamp: an unbounded or negative limit is a trivial way to make the
+      // process serialise its entire history on demand.
+      const raw = Number.parseInt(req.query.limit, 10);
+      const limit = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 1000) : 100;
       res.json(alertManager.getAlertHistory(limit));
     });
 
-    // Test endpoint for manual testing
-    this.app.post('/test', (req, res) => {
+    // Fires a real alert through every enabled channel, including email.
+    // A mutating route, so the factory requires a bearer token - previously
+    // anyone who could reach the port could make this agent send mail.
+    app.post('/test', (req, res) => {
       const { alertManager } = require('./alerts');
-      
+
       const testAlert = {
         metric: 'test',
         severity: 'warning',
@@ -117,7 +103,7 @@ class MonitoringAgent {
       res.json({ message: 'Test alert sent', alert: testAlert });
     });
 
-    logger.info('Express server configured');
+    logger.info('Routes configured');
   }
 
   /**
@@ -174,13 +160,46 @@ class MonitoringAgent {
       // Start monitoring
       this.startMonitoring();
 
-      // Start Express server
-      this.app.listen(this.port, () => {
-        logger.info(`Monitoring Agent running on port ${this.port}`);
-        logger.info(`Metrics available at http://localhost:${this.port}/metrics`);
-        logger.info(`Health check at http://localhost:${this.port}/health`);
-        logger.info(`Status at http://localhost:${this.port}/status`);
+      // Start HTTP server
+      const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
+      if (!token) {
+        logger.warn(
+          'AGENT_API_TOKEN is not set. POST /test (which sends real alert email) ' +
+          'will refuse with 503.'
+        );
+      }
+
+      this.server = createServer({
+        agent: 'agent1-monitoring',
+        logger,
+        port: this.port,
+        host: this.host,
+        authToken: token,
+        corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+        healthChecks: () => {
+          const routers = config.getEnabledRouters();
+          return [
+            {
+              name: 'config_loaded',
+              status: routers.length > 0 ? 'healthy' : 'unhealthy',
+              message: routers.length > 0 ? undefined : 'no enabled routers in config',
+              simulated: false
+            },
+            {
+              name: 'syslog_listener',
+              // Not listening is degraded, not fatal: SNMP polling still works.
+              status: syslogCollector.server ? 'healthy' : 'degraded',
+              message: syslogCollector.server ? undefined : 'syslog listener is not bound',
+              simulated: false
+            }
+          ];
+        }
       });
+
+      this.app = this.server.app;
+      this.setupRoutes(this.app);
+      await this.server.listen();
+      logger.info(`Status at http://${this.host}:${this.port}/status`);
 
       // Handle graceful shutdown
       this.setupShutdownHandlers();
@@ -207,9 +226,10 @@ class MonitoringAgent {
       // Close collectors
       snmpCollector.close();
       syslogCollector.close();
+      if (this.server) await this.server.close();
 
       logger.info('Monitoring Agent stopped');
-      process.exit(0);
+      process.exitCode = 0;
     };
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));

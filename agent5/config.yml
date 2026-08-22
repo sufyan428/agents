@@ -33,6 +33,10 @@ audit:
   include_details: true
 self_healing:
   enabled: true
+  # Nothing reaches a device unless the action is listed in
+  # allowed_actions AND dry_run is false. Both gates default closed.
+  dry_run: true
+  allowed_actions: []
   max_retries: 3
   retry_delay: 60
   notify_on_failure: true

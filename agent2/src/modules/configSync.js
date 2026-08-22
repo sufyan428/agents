@@ -168,6 +168,14 @@ class ConfigSync {
       command
     });
 
+    if (process.env.ROUTER_TLS_INSECURE === 'true' && !ConfigSync.warnedInsecureTls) {
+      ConfigSync.warnedInsecureTls = true;
+      this.logger.warn(
+        'ROUTER_TLS_INSECURE=true - router certificates are NOT being verified. ' +
+        'RESTCONF credentials can be intercepted. Do not use this outside a lab.'
+      );
+    }
+
     const protocol = routerConfig.restconf?.protocol || 'https';
     const port = routerConfig.restconf?.port || 443;
     const username = routerConfig.restconf?.username;
@@ -183,7 +191,12 @@ class ConfigSync {
         },
         timeout: 5000,
         httpsAgent: new https.Agent({
-          rejectUnauthorized: false // Only for testing!
+          // Verifying the router's certificate is the default. This request
+          // carries RESTCONF admin credentials, so disabling verification
+          // hands them to anyone who can intercept the connection.
+          // Opt out only for a lab device with a self-signed cert, and only
+          // by setting ROUTER_TLS_INSECURE=true deliberately.
+          rejectUnauthorized: process.env.ROUTER_TLS_INSECURE !== 'true'
         })
       });
 

@@ -7,6 +7,23 @@ const logger = require('../utils/logger');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 
+/**
+ * Escapes text destined for an HTML email body.
+ *
+ * Alert fields are not all trustworthy: router names come from config, but
+ * details and messages can carry text derived from syslog, which is
+ * unauthenticated UDP input. Interpolating that into HTML unescaped let a
+ * crafted log line inject markup into an operator's inbox.
+ */
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class AlertManager {
   constructor() {
     this.alertHistory = [];
@@ -111,7 +128,11 @@ class AlertManager {
     const mailOptions = {
       from: process.env.SMTP_FROM || 'monitoring-agent@localhost',
       to: process.env.ALERT_EMAIL_RECIPIENT || 'admin@localhost',
-      subject: `[${alert.severity.toUpperCase()}] ${alert.router} - ${alert.metric} Alert`,
+      // Strip CR/LF: a newline in a header value is header injection, which
+      // would let crafted content add its own To/Bcc lines.
+      subject: `[${alert.severity.toUpperCase()}] ${alert.router} - ${alert.metric} Alert`
+        .replace(/[\r\n]+/g, ' ')
+        .slice(0, 200),
       text: this.formatAlertEmail(alert),
       html: this.formatAlertHTMLEmail(alert)
     };
@@ -185,6 +206,17 @@ Sent by Router Monitoring Agent
 
     const color = severityColors[alert.severity] || '#000000';
 
+    const e = {
+      severity: escapeHtml(alert.severity).toUpperCase(),
+      router: escapeHtml(alert.router),
+      metric: escapeHtml(alert.metric),
+      value: escapeHtml(alert.value),
+      threshold: escapeHtml(alert.threshold),
+      timestamp: escapeHtml(alert.timestamp),
+      message: escapeHtml(alert.message),
+      details: alert.details ? escapeHtml(alert.details) : null
+    };
+
     return `
 <!DOCTYPE html>
 <html>
@@ -199,15 +231,15 @@ Sent by Router Monitoring Agent
 <body>
   <div class="alert-box">
     <h2 style="margin-top: 0;">🚨 Router Monitoring Alert</h2>
-    <p><span class="severity">Severity: ${alert.severity.toUpperCase()}</span></p>
-    <p><span class="label">Router:</span> ${alert.router}</p>
-    <p><span class="label">Metric:</span> ${alert.metric}</p>
-    <p><span class="label">Value:</span> ${alert.value}</p>
-    <p><span class="label">Threshold:</span> ${alert.threshold}</p>
-    <p><span class="label">Timestamp:</span> ${alert.timestamp}</p>
+    <p><span class="severity">Severity: ${e.severity}</span></p>
+    <p><span class="label">Router:</span> ${e.router}</p>
+    <p><span class="label">Metric:</span> ${e.metric}</p>
+    <p><span class="label">Value:</span> ${e.value}</p>
+    <p><span class="label">Threshold:</span> ${e.threshold}</p>
+    <p><span class="label">Timestamp:</span> ${e.timestamp}</p>
     <hr>
-    <p>${alert.message}</p>
-    ${alert.details ? `<p><span class="label">Details:</span> ${alert.details}</p>` : ''}
+    <p>${e.message}</p>
+    ${e.details ? `<p><span class="label">Details:</span> ${e.details}</p>` : ''}
   </div>
   <p style="font-size: 0.9em; color: #666;">Sent by Router Monitoring Agent</p>
 </body>

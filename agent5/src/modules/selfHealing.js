@@ -53,6 +53,25 @@ class SelfHealing {
     };
   }
 
+  /**
+   * Whether this specific healing action may touch a device.
+   *
+   * Two gates, both closed by default. `allowed_actions` is an explicit
+   * allowlist - an operator opts into interface_up specifically, not into
+   * "self-healing" as an undifferentiated capability - and `dry_run` lets the
+   * whole path be exercised safely, logging exactly what it would have done.
+   */
+  isActionAllowed(strategyType) {
+    const allowed = this.config.self_healing.allowed_actions;
+    if (!Array.isArray(allowed) || allowed.length === 0) return false;
+    return allowed.includes(strategyType);
+  }
+
+  /** Dry run unless explicitly disabled - absent config means do not write. */
+  get isDryRun() {
+    return this.config.self_healing.dry_run !== false;
+  }
+
   async healViolation(router, violation) {
     this.metrics.healingAttempts++;
 
@@ -67,6 +86,35 @@ class SelfHealing {
         violation,
         reason: 'No healing strategy available',
         requiresManualIntervention: true
+      };
+    }
+
+    if (!this.isActionAllowed(healingStrategy.type)) {
+      logger.warn(
+        `Healing action "${healingStrategy.type}" is not in self_healing.allowed_actions - ` +
+        `not applying it to ${router.name}. Add it to the allowlist to enable it.`
+      );
+      return {
+        success: false,
+        applied: false,
+        skipped: 'not_allowlisted',
+        violation: violation.policy,
+        healingStrategy: healingStrategy.name,
+        requiresHumanApproval: true
+      };
+    }
+
+    if (this.isDryRun) {
+      logger.info(
+        `DRY RUN: would apply "${healingStrategy.type}" to ${router.name} for ` +
+        `${violation.policy}. Set self_healing.dry_run: false to apply for real.`
+      );
+      return {
+        success: true,
+        applied: false,
+        dryRun: true,
+        violation: violation.policy,
+        healingStrategy: healingStrategy.name
       };
     }
 
@@ -272,28 +320,48 @@ class SelfHealing {
     };
   }
 
+  /**
+   * Rotating an SNMP community string is deliberately NOT automated.
+   *
+   * The previous implementation was unsafe in three separate ways and is kept
+   * here only as a description of what it did, because every one of them is a
+   * lesson worth not repeating:
+   *
+   * 1. It fell back to a hardcoded literal, 'SecureComm123!', when no value was
+   *    configured. In an open-source project that is a publicly known password
+   *    written onto production network hardware (CWE-798).
+   * 2. It wrote to OID 1.3.6.1.6.3.10.2.1.3.0, which is snmpEngineTime - a
+   *    read-only counter, not the community string. The write was wrong even on
+   *    its own terms.
+   * 3. Changing the community string is exactly the change that severs the
+   *    framework's own access to the device. Doing it unattended, mid-incident,
+   *    can lock every agent out of the router it is trying to fix.
+   *
+   * It now produces a suggestion for a human instead. Marked simulated:false
+   * because nothing is being pretended - no device write is claimed.
+   */
   async healSnmp(router, violation, strategy) {
-    const snmpClient = require('../utils/snmpClient');
-    const snmp = new snmpClient(router);
+    const message =
+      'SNMP community rotation requires a human. It is vendor-specific, it is not ' +
+      'settable through a standard MIB object, and applying it unattended can lock ' +
+      'this framework out of the device.';
 
-    // Set SNMP community string to secure value
-    const secureCommunity = this.config.governance.secure_snmp_community || 'SecureComm123!';
-    
-    await snmp.set('1.3.6.1.6.3.10.2.1.3.0', secureCommunity, 'OctetString');
+    logger.warn(`Not auto-healing SNMP on ${router.name}: ${message}`);
 
-    logger.info(`SNMP community updated on ${router.name}`);
-    
     this.healingActions.push({
       router: router.name,
       type: 'snmp_heal',
-      action: 'update_community',
+      action: 'suggested_only',
+      applied: false,
       timestamp: new Date().toISOString()
     });
 
     return {
       type: 'snmp',
-      action: 'update_community',
-      message: 'SNMP community string updated'
+      action: 'suggested_only',
+      applied: false,
+      requiresHumanApproval: true,
+      message
     };
   }
 
