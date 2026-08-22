@@ -2,33 +2,33 @@
 # These values trigger alerts when exceeded
 
 cpu:
-  warning: 75      # Warning threshold percentage
-  critical: 90     # Critical threshold percentage
+  warning: 75 # Warning threshold percentage
+  critical: 90 # Critical threshold percentage
 
 memory:
-  warning: 80      # Warning threshold percentage
-  critical: 90     # Critical threshold percentage
+  warning: 80 # Warning threshold percentage
+  critical: 90 # Critical threshold percentage
 
 bandwidth:
-  warning: 80      # Warning threshold percentage of interface capacity
-  critical: 95     # Critical threshold percentage
+  warning: 80 # Warning threshold percentage of interface capacity
+  critical: 95 # Critical threshold percentage
 
 latency:
-  warning: 100     # Warning threshold in milliseconds
-  critical: 200    # Critical threshold in milliseconds
+  warning: 100 # Warning threshold in milliseconds
+  critical: 200 # Critical threshold in milliseconds
 
 packet_loss:
-  warning: 2       # Warning threshold percentage
-  critical: 5      # Critical threshold percentage
+  warning: 2 # Warning threshold percentage
+  critical: 5 # Critical threshold percentage
 
 temperature:
-  warning: 70      # Warning threshold in Celsius
-  critical: 85     # Critical threshold in Celsius
+  warning: 70 # Warning threshold in Celsius
+  critical: 85 # Critical threshold in Celsius
 
 failed_logins:
-  warning: 5       # Number of failed login attempts per minute
-  critical: 10     # Critical threshold per minute
+  warning: 5 # Number of failed login attempts per minute
+  critical: 10 # Critical threshold per minute
 
 interface_errors:
-  warning: 100     # Number of errors per minute
-  critical: 500    # Critical threshold per minute
+  warning: 100 # Number of errors per minute
+  critical: 500 # Critical threshold per minute

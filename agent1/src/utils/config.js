@@ -28,11 +28,11 @@ class ConfigLoader {
       Object.assign(this.thresholds, this.loadYamlFile(thresholdsConfigPath));
 
       logger.info('Configuration loaded successfully');
-      logger.info(`Monitoring ${this.config.routers.filter(r => r.enabled).length} routers`);
+      logger.info(`Monitoring ${this.config.routers.filter((r) => r.enabled).length} routers`);
 
       return {
         router: this.config,
-        thresholds: this.thresholds
+        thresholds: this.thresholds,
       };
     } catch (error) {
       logger.error(`Failed to load configuration: ${error.message}`);
@@ -57,7 +57,7 @@ class ConfigLoader {
    * Get enabled routers
    */
   getEnabledRouters() {
-    return this.config.routers.filter(router => router.enabled);
+    return this.config.routers.filter((router) => router.enabled);
   }
 
   /**
@@ -78,7 +78,7 @@ class ConfigLoader {
    * Get router configuration by name
    */
   getRouter(name) {
-    return this.config.routers.find(router => router.name === name);
+    return this.config.routers.find((router) => router.name === name);
   }
 
   /**

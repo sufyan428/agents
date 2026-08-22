@@ -6,9 +6,9 @@ services:
     container_name: resilience-failover-agent
     restart: unless-stopped
     ports:
-      - "9092:9090"   # External 9092 (Agent 1 uses 9090)
-      - "1514:514/udp" # Syslog port
-      - "4000:3000"   # External 4000 (Agent 1 uses 3000)
+      - '9092:9090' # External 9092 (Agent 1 uses 9090)
+      - '1514:514/udp' # Syslog port
+      - '4000:3000' # External 4000 (Agent 1 uses 3000)
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
@@ -23,17 +23,17 @@ services:
       - NET_ADMIN
     privileged: true
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus-resilience
     restart: unless-stopped
     ports:
-      - "9093:9090"   # External 9093 (Agent 1 uses 9091)
+      - '9093:9090' # External 9093 (Agent 1 uses 9091)
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/prometheus-data:/prometheus
@@ -51,7 +51,7 @@ services:
     container_name: grafana-resilience
     restart: unless-stopped
     ports:
-      - "3002:3000"   # External 3002 (Agent 1 uses 3001)
+      - '3002:3000' # External 3002 (Agent 1 uses 3001)
     volumes:
       - ./monitoring/grafana-data:/var/lib/grafana
       - ./monitoring/grafana-provisioning:/etc/grafana/provisioning

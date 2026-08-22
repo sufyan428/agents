@@ -67,10 +67,14 @@ export class Hysteresis {
     // Getting this backwards silently produces an alarm that never clears, so
     // it is rejected outright rather than left to be discovered in production.
     if (!inverted && clearAt >= raiseAt) {
-      throw new RangeError(`clearAt (${clearAt}) must be below raiseAt (${raiseAt}); the gap is the hysteresis`);
+      throw new RangeError(
+        `clearAt (${clearAt}) must be below raiseAt (${raiseAt}); the gap is the hysteresis`,
+      );
     }
     if (inverted && clearAt <= raiseAt) {
-      throw new RangeError(`for an inverted alarm, clearAt (${clearAt}) must be above raiseAt (${raiseAt})`);
+      throw new RangeError(
+        `for an inverted alarm, clearAt (${clearAt}) must be above raiseAt (${raiseAt})`,
+      );
     }
 
     this.raiseAt = raiseAt;
@@ -80,10 +84,16 @@ export class Hysteresis {
     this.inverted = inverted;
   }
 
-  get state(): AlarmState { return this._state; }
-  get isRaised(): boolean { return this._state === 'raised'; }
+  get state(): AlarmState {
+    return this._state;
+  }
+  get isRaised(): boolean {
+    return this._state === 'raised';
+  }
   /** Epoch ms of the current raise, or null while clear. */
-  get raisedAt(): number | null { return this._raisedAt; }
+  get raisedAt(): number | null {
+    return this._raisedAt;
+  }
 
   private breaching(value: number): boolean {
     return this.inverted ? value < this.raiseAt : value > this.raiseAt;
@@ -97,7 +107,8 @@ export class Hysteresis {
   update(value: number, now: number = Date.now()): HysteresisResult {
     if (!Number.isFinite(value)) {
       return {
-        state: this._state, changed: false,
+        state: this._state,
+        changed: false,
         progress: this.streak,
         required: this._state === 'clear' ? this.raiseAfter : this.clearAfter,
         value,
@@ -177,7 +188,11 @@ export class FlapDetector {
   private flappingSince: number | null = null;
   private lastTransition = 0;
 
-  constructor({ threshold = 4, windowMs = 300_000, cooldownMs = 300_000 }: FlapDetectorOptions = {}) {
+  constructor({
+    threshold = 4,
+    windowMs = 300_000,
+    cooldownMs = 300_000,
+  }: FlapDetectorOptions = {}) {
     this.threshold = threshold;
     this.windowMs = windowMs;
     this.cooldownMs = cooldownMs;
@@ -206,8 +221,12 @@ export class FlapDetector {
     return true;
   }
 
-  get transitionCount(): number { return this.transitions.length; }
-  get since(): number | null { return this.flappingSince; }
+  get transitionCount(): number {
+    return this.transitions.length;
+  }
+  get since(): number | null {
+    return this.flappingSince;
+  }
 
   private prune(now: number): void {
     const cutoff = now - this.windowMs;

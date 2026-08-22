@@ -14,7 +14,7 @@ class ConfigManager {
       configsPushed: 0,
       lastBackupTime: null,
       lastRestoreTime: null,
-      lastPushTime: null
+      lastPushTime: null,
     };
   }
 
@@ -30,16 +30,13 @@ class ConfigManager {
 
   async backupConfig(router) {
     await this.ensureBackupDir();
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFile = path.join(
-      this.backupDir,
-      `${router.name}_${timestamp}.config`
-    );
+    const backupFile = path.join(this.backupDir, `${router.name}_${timestamp}.config`);
 
     try {
       logger.info(`Backing up configuration for ${router.name}`);
-      
+
       // Collect router information via SNMP
       const snmp = new snmpClient(router);
       const systemInfo = await this.collectSystemInfo(snmp);
@@ -56,27 +53,27 @@ class ConfigManager {
         routing: routingInfo,
         metadata: {
           backupAgent: 'automation-governance-agent',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       };
 
       await fs.writeFile(backupFile, JSON.stringify(backupData, null, 2));
-      
+
       this.metrics.configsBackedUp++;
       this.metrics.lastBackupTime = new Date().toISOString();
-      
+
       logger.info(`Configuration backed up successfully: ${backupFile}`);
-      
+
       return {
         success: true,
         backupFile,
-        timestamp: backupData.timestamp
+        timestamp: backupData.timestamp,
       };
     } catch (error) {
       logger.error(`Failed to backup config for ${router.name}: ${error.message}`);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -89,7 +86,7 @@ class ConfigManager {
       sysContact: '1.3.6.1.2.1.1.4.0',
       sysName: '1.3.6.1.2.1.1.5.0',
       sysLocation: '1.3.6.1.2.1.1.6.0',
-      sysServices: '1.3.6.1.2.1.1.7.0'
+      sysServices: '1.3.6.1.2.1.1.7.0',
     };
 
     const info = {};
@@ -101,18 +98,18 @@ class ConfigManager {
         info[key] = 'N/A';
       }
     }
-    
+
     return info;
   }
 
   async collectInterfaceInfo(snmp) {
     const interfaces = [];
     const ifNumberOid = '1.3.6.1.2.1.2.1.0';
-    
+
     try {
       const ifCount = await snmp.get(ifNumberOid);
       logger.info(`Found ${ifCount} interfaces`);
-      
+
       // Collect basic interface information
       for (let i = 1; i <= parseInt(ifCount); i++) {
         const interfaceOidBase = `1.3.6.1.2.1.2.2.1.${i}`;
@@ -132,7 +129,7 @@ class ConfigManager {
             mtu: await snmp.get(ifMtu),
             speed: await snmp.get(ifSpeed),
             adminStatus: await snmp.get(ifAdminStatus),
-            operStatus: await snmp.get(ifOperStatus)
+            operStatus: await snmp.get(ifOperStatus),
           };
           interfaces.push(interfaceData);
         } catch (error) {
@@ -142,45 +139,45 @@ class ConfigManager {
     } catch (error) {
       logger.error(`Error collecting interface info: ${error.message}`);
     }
-    
+
     return interfaces;
   }
 
   async collectRoutingInfo(snmp) {
     const routes = [];
     const routeOidBase = '1.3.6.1.2.1.4.21.1';
-    
+
     // Collect routing table information
     try {
       // This is a simplified example - in practice you'd walk the routing table
       const routeEntries = await snmp.walk(routeOidBase);
-      
+
       for (const entry of routeEntries) {
         routes.push({
           oid: entry.oid,
-          value: entry.value
+          value: entry.value,
         });
       }
     } catch (error) {
       logger.warn(`Failed to collect routing info: ${error.message}`);
     }
-    
+
     return {
       routes: routes.slice(0, 50), // Limit for demo purposes
-      message: 'Routing table collection (limited entries)'
+      message: 'Routing table collection (limited entries)',
     };
   }
 
   async pushConfig(router, configChanges) {
     logger.info(`Pushing configuration changes to ${router.name}`);
-    
+
     try {
       // Verify approval is not required
       if (this.config.governance.approval_required) {
         logger.warn('Configuration push requires manual approval');
         return {
           success: false,
-          error: 'Manual approval required'
+          error: 'Manual approval required',
         };
       }
 
@@ -191,7 +188,7 @@ class ConfigManager {
           logger.error('Failed to backup before config push');
           return {
             success: false,
-            error: 'Backup failed, aborting config push'
+            error: 'Backup failed, aborting config push',
           };
         }
       }
@@ -202,55 +199,55 @@ class ConfigManager {
         try {
           const result = await this.applyConfigChange(router, change);
           results.push(result);
-          
+
           this.configChanges.push({
             router: router.name,
             change,
             result,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         } catch (error) {
           logger.error(`Failed to apply config change: ${error.message}`);
           results.push({
             success: false,
             change,
-            error: error.message
+            error: error.message,
           });
         }
       }
 
       this.metrics.configsPushed++;
       this.metrics.lastPushTime = new Date().toISOString();
-      
-      const allSuccessful = results.every(r => r.success);
-      
+
+      const allSuccessful = results.every((r) => r.success);
+
       return {
         success: allSuccessful,
         results,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error(`Config push failed: ${error.message}`);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async applyConfigChange(router, change) {
     const snmp = new snmpClient(router);
-    
+
     switch (change.type) {
       case 'snmp_set':
         return await this.setSnmpValue(snmp, change);
-      
+
       case 'syslog_config':
         return await this.configureSyslog(router, change);
-      
+
       case 'interface_config':
         return await this.configureInterface(router, change);
-      
+
       default:
         throw new Error(`Unknown config change type: ${change.type}`);
     }
@@ -264,7 +261,7 @@ class ConfigManager {
         success: true,
         type: 'snmp_set',
         oid: change.oid,
-        value: change.value
+        value: change.value,
       };
     } catch (error) {
       logger.error(`Failed to set SNMP value: ${error.message}`);
@@ -278,7 +275,7 @@ class ConfigManager {
     return {
       success: true,
       type: 'syslog_config',
-      message: 'Syslog configuration applied'
+      message: 'Syslog configuration applied',
     };
   }
 
@@ -289,17 +286,17 @@ class ConfigManager {
       success: true,
       type: 'interface_config',
       interface: change.interface,
-      message: 'Interface configuration applied'
+      message: 'Interface configuration applied',
     };
   }
 
   async restoreConfig(router, backupFile) {
     logger.info(`Restoring configuration for ${router.name} from ${backupFile}`);
-    
+
     try {
       // Read backup file
       const backupData = JSON.parse(await fs.readFile(backupFile, 'utf8'));
-      
+
       // Verify backup matches router
       if (backupData.routerName !== router.name || backupData.host !== router.host) {
         throw new Error('Backup file does not match router');
@@ -307,7 +304,7 @@ class ConfigManager {
 
       // Restore configuration
       const restoreResults = [];
-      
+
       // Restore system settings
       if (backupData.system) {
         logger.info('Restoring system settings');
@@ -322,20 +319,20 @@ class ConfigManager {
 
       this.metrics.configsRestored++;
       this.metrics.lastRestoreTime = new Date().toISOString();
-      
+
       logger.info(`Configuration restored successfully for ${router.name}`);
-      
+
       return {
         success: true,
         backupFile,
         timestamp: new Date().toISOString(),
-        restoredSettings: restoreResults
+        restoredSettings: restoreResults,
       };
     } catch (error) {
       logger.error(`Failed to restore config: ${error.message}`);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -349,14 +346,14 @@ class ConfigManager {
         if (file.endsWith('.config')) {
           const filePath = path.join(this.backupDir, file);
           const stats = await fs.stat(filePath);
-          
+
           if (!router || file.startsWith(router.name)) {
             backups.push({
               file: file,
               path: filePath,
               size: stats.size,
               created: stats.birthtime,
-              modified: stats.mtime
+              modified: stats.mtime,
             });
           }
         }
@@ -364,7 +361,7 @@ class ConfigManager {
 
       // Sort by modification time, newest first
       backups.sort((a, b) => b.modified - a.modified);
-      
+
       return backups;
     } catch (error) {
       logger.error(`Failed to list backups: ${error.message}`);

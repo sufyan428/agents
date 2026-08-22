@@ -51,9 +51,18 @@ function fromBraces(text: string): string | null {
 
   for (let i = start; i < text.length; i++) {
     const ch = text[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\') { escaped = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
     if (inString) continue;
     if (ch === open) depth++;
     else if (ch === close) {
@@ -69,7 +78,9 @@ function repairCommon(text: string): string {
   return text.replace(/,(\s*[}\]])/g, '$1');
 }
 
-function candidates(text: string): Array<{ raw: string; strategy: ParseSuccess<unknown>['strategy'] }> {
+function candidates(
+  text: string,
+): Array<{ raw: string; strategy: ParseSuccess<unknown>['strategy'] }> {
   const out: Array<{ raw: string; strategy: ParseSuccess<unknown>['strategy'] }> = [];
   const trimmed = text.trim();
   if (trimmed) out.push({ raw: trimmed, strategy: 'direct' });
@@ -126,7 +137,8 @@ export function parseStructured<T>(text: string, schema: z.ZodType<T>): ParseRes
  * through to its deterministic path instead.
  */
 export function buildRepairPrompt(originalText: string, error: string): string {
-  const excerpt = originalText.length > 1500 ? `${originalText.slice(0, 1500)}\n...[truncated]` : originalText;
+  const excerpt =
+    originalText.length > 1500 ? `${originalText.slice(0, 1500)}\n...[truncated]` : originalText;
   return (
     'Your previous response could not be parsed.\n\n' +
     `Problem: ${error}\n\n` +

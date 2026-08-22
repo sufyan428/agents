@@ -16,7 +16,7 @@ const modules = [
   '../modules/syslogListener',
   '../monitors/pingMonitor',
   '../monitors/snmpMonitor',
-  '../server/expressServer'
+  '../server/expressServer',
 ];
 
 for (const modPath of modules) {

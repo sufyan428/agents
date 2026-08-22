@@ -10,7 +10,7 @@ class AuditReporter {
     this.metrics = {
       reportsGenerated: 0,
       auditEntries: 0,
-      lastReportTime: null
+      lastReportTime: null,
     };
   }
 
@@ -40,7 +40,7 @@ class AuditReporter {
       details: event.details,
       user: event.user || 'automation-governance-agent',
       result: event.result || 'success',
-      metadata: event.metadata || {}
+      metadata: event.metadata || {},
     };
 
     this.auditLogs.push(auditEntry);
@@ -77,20 +77,20 @@ class AuditReporter {
       generatedAt: new Date().toISOString(),
       summary: {
         totalRouters: routers.length,
-        compliantRouters: policyResults.filter(r => r.compliance).length,
-        nonCompliantRouters: policyResults.filter(r => !r.compliance).length,
-        totalViolations: policyResults.reduce((sum, r) => sum + r.violations.length, 0)
+        compliantRouters: policyResults.filter((r) => r.compliance).length,
+        nonCompliantRouters: policyResults.filter((r) => !r.compliance).length,
+        totalViolations: policyResults.reduce((sum, r) => sum + r.violations.length, 0),
       },
-      routers: policyResults.map(result => ({
+      routers: policyResults.map((result) => ({
         name: result.router,
         host: result.host,
         compliant: result.compliance,
         totalPolicies: result.totalPolicies,
         passedPolicies: result.passedPolicies,
         failedPolicies: result.violations.length,
-        violations: result.violations
+        violations: result.violations,
       })),
-      recommendations: this.generateRecommendations(policyResults)
+      recommendations: this.generateRecommendations(policyResults),
     };
 
     await this.saveReport('compliance_report', report);
@@ -100,7 +100,7 @@ class AuditReporter {
       routerHost: 'N/A',
       severity: 'info',
       details: { summary: report.summary },
-      metadata: { reportId: report.generatedAt }
+      metadata: { reportId: report.generatedAt },
     });
 
     this.metrics.reportsGenerated++;
@@ -118,14 +118,14 @@ class AuditReporter {
       timeRange,
       summary: {
         totalEvents: this.auditLogs.length,
-        criticalEvents: this.auditLogs.filter(e => e.severity === 'critical').length,
-        highEvents: this.auditLogs.filter(e => e.severity === 'high').length,
-        mediumEvents: this.auditLogs.filter(e => e.severity === 'medium').length,
-        lowEvents: this.auditLogs.filter(e => e.severity === 'low').length
+        criticalEvents: this.auditLogs.filter((e) => e.severity === 'critical').length,
+        highEvents: this.auditLogs.filter((e) => e.severity === 'high').length,
+        mediumEvents: this.auditLogs.filter((e) => e.severity === 'medium').length,
+        lowEvents: this.auditLogs.filter((e) => e.severity === 'low').length,
       },
       eventsByType: this.groupEventsByType(),
       eventsByRouter: this.groupEventsByRouter(),
-      recentEvents: this.auditLogs.slice(-100) // Last 100 events
+      recentEvents: this.auditLogs.slice(-100), // Last 100 events
     };
 
     await this.saveReport('audit_report', report);
@@ -144,13 +144,13 @@ class AuditReporter {
       generatedAt: new Date().toISOString(),
       summary: {
         totalChanges: configChanges.length,
-        successfulChanges: configChanges.filter(c => c.result?.success).length,
-        failedChanges: configChanges.filter(c => !c.result?.success).length,
-        totalBackups: backups.length
+        successfulChanges: configChanges.filter((c) => c.result?.success).length,
+        failedChanges: configChanges.filter((c) => !c.result?.success).length,
+        totalBackups: backups.length,
       },
       recentChanges: configChanges.slice(-50),
       recentBackups: backups.slice(0, 50),
-      changesByRouter: this.groupChangesByRouter(configChanges)
+      changesByRouter: this.groupChangesByRouter(configChanges),
     };
 
     await this.saveReport('configuration_report', report);
@@ -159,7 +159,7 @@ class AuditReporter {
       routerName: 'ALL',
       routerHost: 'N/A',
       severity: 'info',
-      details: { summary: report.summary }
+      details: { summary: report.summary },
     });
 
     this.metrics.reportsGenerated++;
@@ -179,11 +179,11 @@ class AuditReporter {
         successfulHealings: metrics.successfulHealings,
         failedHealings: metrics.failedHealings,
         autoHealed: metrics.autoHealed,
-        manualInterventionRequired: metrics.manualInterventionRequired
+        manualInterventionRequired: metrics.manualInterventionRequired,
       },
       healingActions: healingActions.slice(-100),
       healingByType: this.groupHealingByType(healingActions),
-      healingByRouter: this.groupHealingByRouter(healingActions)
+      healingByRouter: this.groupHealingByRouter(healingActions),
     };
 
     await this.saveReport('self_healing_report', report);
@@ -192,7 +192,7 @@ class AuditReporter {
       routerName: 'ALL',
       routerHost: 'N/A',
       severity: 'info',
-      details: { summary: report.summary }
+      details: { summary: report.summary },
     });
 
     this.metrics.reportsGenerated++;
@@ -211,20 +211,22 @@ class AuditReporter {
           policy: violation.policy,
           severity: violation.severity,
           recommendation: this.getRecommendation(violation),
-          priority: this.getPriority(violation.severity)
+          priority: this.getPriority(violation.severity),
         });
       }
     }
 
     // Sort by priority
-    recommendations.sort((a, b) => this.getPriorityValue(a.priority) - this.getPriorityValue(b.priority));
+    recommendations.sort(
+      (a, b) => this.getPriorityValue(a.priority) - this.getPriorityValue(b.priority),
+    );
 
     return recommendations.slice(0, 20); // Top 20 recommendations
   }
 
   getRecommendation(violation) {
     const policy = violation.policy.toLowerCase();
-    
+
     if (policy.includes('interface') && policy.includes('down')) {
       return 'Check interface connectivity and bring interface UP. Investigate physical layer issues.';
     } else if (policy.includes('syslog') && policy.includes('disabled')) {
@@ -248,22 +250,33 @@ class AuditReporter {
 
   getPriority(severity) {
     switch (severity) {
-      case 'critical': return 'P0';
-      case 'high': return 'P1';
-      case 'medium': return 'P2';
-      case 'low': return 'P3';
-      default: return 'P4';
+      case 'critical':
+        return 'P0';
+      case 'high':
+        return 'P1';
+      case 'medium':
+        return 'P2';
+      case 'low':
+        return 'P3';
+      default:
+        return 'P4';
     }
   }
 
   getPriorityValue(priority) {
     switch (priority) {
-      case 'P0': return 0;
-      case 'P1': return 1;
-      case 'P2': return 2;
-      case 'P3': return 3;
-      case 'P4': return 4;
-      default: return 5;
+      case 'P0':
+        return 0;
+      case 'P1':
+        return 1;
+      case 'P2':
+        return 2;
+      case 'P3':
+        return 3;
+      case 'P4':
+        return 4;
+      default:
+        return 5;
     }
   }
 
@@ -324,12 +337,9 @@ class AuditReporter {
 
   async saveReport(reportName, report) {
     await this.ensureAuditDir();
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const reportFile = path.join(
-      this.auditDir,
-      `${reportName}_${timestamp}.json`
-    );
+    const reportFile = path.join(this.auditDir, `${reportName}_${timestamp}.json`);
 
     try {
       await fs.writeFile(reportFile, JSON.stringify(report, null, 2));

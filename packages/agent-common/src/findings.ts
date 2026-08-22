@@ -1,6 +1,10 @@
 import {
-  createFinding, mergeFinding, dedupeKeyFor,
-  type Finding, type FindingInput, type Severity,
+  createFinding,
+  mergeFinding,
+  dedupeKeyFor,
+  type Finding,
+  type FindingInput,
+  type Severity,
 } from '@ragent/agent-protocol';
 
 /**
@@ -40,7 +44,11 @@ export class FindingStore {
   private readonly resolveAfterMs: number;
   private readonly maxResolved: number;
 
-  constructor({ maxActive = 500, resolveAfterMs = 300_000, maxResolved = 200 }: FindingStoreOptions = {}) {
+  constructor({
+    maxActive = 500,
+    resolveAfterMs = 300_000,
+    maxResolved = 200,
+  }: FindingStoreOptions = {}) {
     this.maxActive = maxActive;
     this.resolveAfterMs = resolveAfterMs;
     this.maxResolved = maxResolved;
@@ -71,7 +79,13 @@ export class FindingStore {
   }
 
   /** Explicitly clears a condition the agent knows has recovered. */
-  clear(agent: string, kind: string, entity: Finding['entity'], reason = 'condition_cleared', now: Date = new Date()): boolean {
+  clear(
+    agent: string,
+    kind: string,
+    entity: Finding['entity'],
+    reason = 'condition_cleared',
+    now: Date = new Date(),
+  ): boolean {
     return this.clearByKey(dedupeKeyFor(agent, kind, entity), reason, now);
   }
 
@@ -136,7 +150,9 @@ export class FindingStore {
     return this.resolved.slice(-limit);
   }
 
-  get activeCount(): number { return this.active.size; }
+  get activeCount(): number {
+    return this.active.size;
+  }
 
   /** True if any active finding came from a simulated path. */
   get hasSimulated(): boolean {
@@ -166,7 +182,12 @@ export class FindingStore {
  * protocol package exists to remove.
  */
 export function mountFindingsRoute(
-  app: { get: (path: string, handler: (req: unknown, res: { json: (body: unknown) => void }) => void) => void },
+  app: {
+    get: (
+      path: string,
+      handler: (req: unknown, res: { json: (body: unknown) => void }) => void,
+    ) => void;
+  },
   store: FindingStore,
   agentName: string,
 ): void {

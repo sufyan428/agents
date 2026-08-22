@@ -9,7 +9,7 @@ class SNMPClient {
       version: this.getSnmpVersion(router.snmp_version),
       community: router.snmp_community,
       timeout: 5000,
-      retries: 3
+      retries: 3,
     };
     this.session = null;
   }
@@ -30,11 +30,7 @@ class SNMPClient {
 
   createSession() {
     if (!this.session) {
-      this.session = snmp.createSession(
-        this.router.host,
-        this.options.community,
-        this.options
-      );
+      this.session = snmp.createSession(this.router.host, this.options.community, this.options);
       logger.debug(`Created SNMP session for ${this.router.name} at ${this.router.host}`);
     }
     return this.session;
@@ -78,7 +74,7 @@ class SNMPClient {
       const varbind = {
         oid: oid,
         type: this.getSnmpType(type),
-        value: value
+        value: value,
       };
 
       session.set([varbind], (error, _varbinds) => {
@@ -101,27 +97,32 @@ class SNMPClient {
       const session = this.createSession();
       const results = [];
 
-      session.walk(oid, maxRepetitions, (varbinds) => {
-        for (const varbind of varbinds) {
-          if (!snmp.isVarbindError(varbind)) {
-            results.push({
-              oid: varbind.oid,
-              value: varbind.value.toString(),
-              type: varbind.type
-            });
+      session.walk(
+        oid,
+        maxRepetitions,
+        (varbinds) => {
+          for (const varbind of varbinds) {
+            if (!snmp.isVarbindError(varbind)) {
+              results.push({
+                oid: varbind.oid,
+                value: varbind.value.toString(),
+                type: varbind.type,
+              });
+            }
           }
-        }
-      }, (error) => {
-        if (error) {
-          logger.error(`SNMP WALK failed for ${oid}: ${error.message}`);
-          reject(error);
-          return;
-        }
+        },
+        (error) => {
+          if (error) {
+            logger.error(`SNMP WALK failed for ${oid}: ${error.message}`);
+            reject(error);
+            return;
+          }
 
-        logger.debug(`SNMP WALK ${oid} returned ${results.length} results`);
-        resolve(results);
-        session.close();
-      });
+          logger.debug(`SNMP WALK ${oid} returned ${results.length} results`);
+          resolve(results);
+          session.close();
+        },
+      );
     });
   }
 
@@ -142,10 +143,10 @@ class SNMPClient {
           return;
         }
 
-        const results = varbinds.map(varbind => ({
+        const results = varbinds.map((varbind) => ({
           oid: varbind.oid,
           value: varbind.value.toString(),
-          type: varbind.type
+          type: varbind.type,
         }));
 
         logger.debug(`SNMP GETBULK ${oid} returned ${results.length} results`);
@@ -171,7 +172,7 @@ class SNMPClient {
         for (const index in table) {
           results.push({
             index: index,
-            columns: table[index]
+            columns: table[index],
           });
         }
 
@@ -201,7 +202,7 @@ class SNMPClient {
 
         resolve({
           oid: varbind.oid,
-          value: varbind.value.toString()
+          value: varbind.value.toString(),
         });
         session.close();
       });
@@ -210,17 +211,17 @@ class SNMPClient {
 
   getSnmpType(typeStr) {
     const types = {
-      'Integer': snmp.ObjectType.Integer,
-      'Integer32': snmp.ObjectType.Integer,
-      'OctetString': snmp.ObjectType.OctetString,
-      'ObjectIdentifier': snmp.ObjectType.ObjectIdentifier,
-      'IpAddress': snmp.ObjectType.IpAddress,
-      'Counter32': snmp.ObjectType.Counter32,
-      'Gauge32': snmp.ObjectType.Gauge32,
-      'TimeTicks': snmp.ObjectType.TimeTicks,
-      'Opaque': snmp.ObjectType.Opaque,
-      'Counter64': snmp.ObjectType.Counter64,
-      'Unsigned32': snmp.ObjectType.Unsigned32
+      Integer: snmp.ObjectType.Integer,
+      Integer32: snmp.ObjectType.Integer,
+      OctetString: snmp.ObjectType.OctetString,
+      ObjectIdentifier: snmp.ObjectType.ObjectIdentifier,
+      IpAddress: snmp.ObjectType.IpAddress,
+      Counter32: snmp.ObjectType.Counter32,
+      Gauge32: snmp.ObjectType.Gauge32,
+      TimeTicks: snmp.ObjectType.TimeTicks,
+      Opaque: snmp.ObjectType.Opaque,
+      Counter64: snmp.ObjectType.Counter64,
+      Unsigned32: snmp.ObjectType.Unsigned32,
     };
 
     return types[typeStr] || snmp.ObjectType.OctetString;
@@ -237,16 +238,18 @@ class SNMPClient {
   async testConnection() {
     try {
       const sysDescr = await this.get('1.3.6.1.2.1.1.1.0');
-      logger.info(`SNMP connection test successful for ${this.router.name}: ${sysDescr.substring(0, 50)}`);
+      logger.info(
+        `SNMP connection test successful for ${this.router.name}: ${sysDescr.substring(0, 50)}`,
+      );
       return {
         success: true,
-        sysDescr: sysDescr.substring(0, 100)
+        sysDescr: sysDescr.substring(0, 100),
       };
     } catch (error) {
       logger.error(`SNMP connection test failed for ${this.router.name}: ${error.message}`);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }

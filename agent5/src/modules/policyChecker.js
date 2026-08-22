@@ -3,7 +3,7 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent5.checkConfiguration',
   'Returns compliant without reading the device configuration.',
-  'a NETCONF or RESTCONF read of the running config'
+  'a NETCONF or RESTCONF read of the running config',
 );
 
 const fs = require('fs').promises;
@@ -24,7 +24,7 @@ class PolicyChecker {
       policiesChecked: 0,
       violationsFound: 0,
       violationsFixed: 0,
-      lastCheckTime: null
+      lastCheckTime: null,
     };
   }
 
@@ -32,7 +32,7 @@ class PolicyChecker {
     try {
       const policiesDir = path.join(__dirname, '../../policies');
       const files = await fs.readdir(policiesDir);
-      
+
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(policiesDir, file);
@@ -42,7 +42,7 @@ class PolicyChecker {
           logger.info(`Loaded policy: ${policy.name} from ${file}`);
         }
       }
-      
+
       logger.info(`Loaded ${this.policies.length} policies`);
       return this.policies;
     } catch (error) {
@@ -62,7 +62,7 @@ class PolicyChecker {
         router: router.name,
         host: router.host,
         compliance: routerResults.compliance,
-        violations: routerResults.violations
+        violations: routerResults.violations,
       });
       this.violations.push(...routerResults.violations);
     }
@@ -89,7 +89,7 @@ class PolicyChecker {
             description: result.violation,
             currentValue: result.currentValue,
             expectedValue: policy.expectedValue,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
           logger.warn(`Policy violation on ${router.name}: ${policy.name}`);
         }
@@ -102,23 +102,23 @@ class PolicyChecker {
       compliant,
       violations,
       totalPolicies: this.policies.length,
-      passedPolicies: this.policies.length - violations.length
+      passedPolicies: this.policies.length - violations.length,
     };
   }
 
   async checkPolicy(router, policy) {
     const snmp = new snmpClient(router);
-    
+
     switch (policy.type) {
       case 'snmp_oid':
         return await this.checkSnmpOid(snmp, policy);
-      
+
       case 'syslog_pattern':
         return await this.checkSyslogPattern(router, policy);
-      
+
       case 'configuration':
         return await this.checkConfiguration(router, policy);
-      
+
       default:
         throw new Error(`Unknown policy type: ${policy.type}`);
     }
@@ -128,18 +128,20 @@ class PolicyChecker {
     try {
       const value = await snmp.get(policy.oid);
       const result = this.compareValues(value, policy.operator, policy.expectedValue);
-      
+
       return {
         compliant: result,
         currentValue: value,
-        violation: result ? null : `${policy.description}: Current value ${value} does not match expected ${policy.expectedValue}`
+        violation: result
+          ? null
+          : `${policy.description}: Current value ${value} does not match expected ${policy.expectedValue}`,
       };
     } catch (error) {
       logger.error(`SNMP check failed for OID ${policy.oid}: ${error.message}`);
       return {
         compliant: false,
         currentValue: 'N/A',
-        violation: `Failed to retrieve SNMP data: ${error.message}`
+        violation: `Failed to retrieve SNMP data: ${error.message}`,
       };
     }
   }
@@ -168,7 +170,7 @@ class PolicyChecker {
         verified: false,
         currentValue: 'no syslog listener available',
         violation: null,
-        notEvaluated: 'this check needs a syslog listener; none was provided'
+        notEvaluated: 'this check needs a syslog listener; none was provided',
       };
     }
 
@@ -179,7 +181,7 @@ class PolicyChecker {
         verified: false,
         currentValue: 'policy has no pattern',
         violation: null,
-        notEvaluated: 'syslog policies require a "pattern"'
+        notEvaluated: 'syslog policies require a "pattern"',
       };
     }
 
@@ -197,36 +199,34 @@ class PolicyChecker {
         verified: false,
         currentValue: `invalid pattern: ${error.message}`,
         violation: null,
-        notEvaluated: 'the policy pattern is not a valid regular expression'
+        notEvaluated: 'the policy pattern is not a valid regular expression',
       };
     }
 
     const host = router.host || router.name;
-    const candidates = this.syslogListener
-      .getMessages(null, 1000)
-      .filter((m) => {
-        const ts = new Date(m.timestamp || m.receivedAt || 0).getTime();
-        if (Number.isFinite(ts) && ts < cutoff) return false;
-        if (host && m.hostname && m.hostname !== host && m.source !== host) return false;
-        return regex.test(m.message || '');
-      });
+    const candidates = this.syslogListener.getMessages(null, 1000).filter((m) => {
+      const ts = new Date(m.timestamp || m.receivedAt || 0).getTime();
+      if (Number.isFinite(ts) && ts < cutoff) return false;
+      if (host && m.hostname && m.hostname !== host && m.source !== host) return false;
+      return regex.test(m.message || '');
+    });
 
     const count = candidates.length;
-    const compliant = expectation === 'present'
-      ? count > 0
-      : count <= maxOccurrences;
+    const compliant = expectation === 'present' ? count > 0 : count <= maxOccurrences;
 
     return {
       compliant,
       verified: true,
       currentValue: `${count} match(es) in the last ${windowMinutes}m`,
       matchCount: count,
-      sampleMatch: candidates.length ? String(candidates[candidates.length - 1].message).slice(0, 200) : null,
+      sampleMatch: candidates.length
+        ? String(candidates[candidates.length - 1].message).slice(0, 200)
+        : null,
       violation: compliant
         ? null
         : expectation === 'present'
           ? `${policy.description || pattern}: expected at least one match in the last ${windowMinutes}m, found none`
-          : `${policy.description || pattern}: found ${count} match(es) in the last ${windowMinutes}m (limit ${maxOccurrences})`
+          : `${policy.description || pattern}: found ${count} match(es) in the last ${windowMinutes}m (limit ${maxOccurrences})`,
     };
   }
 
@@ -237,7 +237,7 @@ class PolicyChecker {
       compliant: true,
       verified: false,
       currentValue: 'N/A',
-      violation: null
+      violation: null,
     };
   }
 
@@ -246,15 +246,24 @@ class PolicyChecker {
     const numExpected = parseFloat(expected);
 
     switch (operator) {
-      case 'eq': return actual === expected;
-      case 'ne': return actual !== expected;
-      case 'gt': return numActual > numExpected;
-      case 'lt': return numActual < numExpected;
-      case 'gte': return numActual >= numExpected;
-      case 'lte': return numActual <= numExpected;
-      case 'contains': return actual.includes(expected);
-      case 'not_contains': return !actual.includes(expected);
-      default: return actual === expected;
+      case 'eq':
+        return actual === expected;
+      case 'ne':
+        return actual !== expected;
+      case 'gt':
+        return numActual > numExpected;
+      case 'lt':
+        return numActual < numExpected;
+      case 'gte':
+        return numActual >= numExpected;
+      case 'lte':
+        return numActual <= numExpected;
+      case 'contains':
+        return actual.includes(expected);
+      case 'not_contains':
+        return !actual.includes(expected);
+      default:
+        return actual === expected;
     }
   }
 

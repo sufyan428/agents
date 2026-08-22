@@ -53,8 +53,15 @@ class RemediationAdvisor {
     if (!issues.hasIssues) {
       // Nothing worth spending an LLM call or a history slot on - log and move on,
       // rather than diluting the suggestion history with repeated "all clear" entries.
-      logger.info('No compliance violations or performance anomalies detected - nothing to suggest');
-      return { id: null, type: 'suggestion', timestamp: new Date().toISOString(), noIssuesFound: true };
+      logger.info(
+        'No compliance violations or performance anomalies detected - nothing to suggest',
+      );
+      return {
+        id: null,
+        type: 'suggestion',
+        timestamp: new Date().toISOString(),
+        noIssuesFound: true,
+      };
     }
 
     const userContent = JSON.stringify(issues, null, 2);
@@ -73,9 +80,8 @@ class RemediationAdvisor {
 
     if (!description) {
       const latest = await this.dataCollector.getLatestIncident();
-      description = latest.reachable && latest.data?.latest?.analysis
-        ? latest.data.latest.analysis
-        : null;
+      description =
+        latest.reachable && latest.data?.latest?.analysis ? latest.data.latest.analysis : null;
     }
 
     if (!description) {
@@ -92,7 +98,8 @@ class RemediationAdvisor {
   }
 
   async reviewConfigChange(proposedChange) {
-    const userContent = typeof proposedChange === 'string' ? proposedChange : JSON.stringify(proposedChange, null, 2);
+    const userContent =
+      typeof proposedChange === 'string' ? proposedChange : JSON.stringify(proposedChange, null, 2);
     const result = await this.llmClient.complete(REVIEW_SYSTEM_PROMPT, userContent);
 
     if (!result || !result.text) {
@@ -111,7 +118,7 @@ class RemediationAdvisor {
       requiresHumanApproval: true,
       autoApply: false,
       text,
-      usage
+      usage,
     };
     this.history.push(entry);
     const maxSize = this.config.polling.history_size;

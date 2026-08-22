@@ -1,6 +1,6 @@
 /**
  * Logger Utility Module
- * 
+ *
  * Provides structured logging with daily rotation
  */
 
@@ -16,21 +16,21 @@ class Logger {
    */
   static create(config) {
     const logDir = path.resolve(config.directory);
-    
+
     // Create log formats
     const logFormat = winston.format.combine(
       winston.format.timestamp({
-        format: 'YYYY-MM-DD HH:mm:ss'
+        format: 'YYYY-MM-DD HH:mm:ss',
       }),
       winston.format.errors({ stack: true }),
       winston.format.splat(),
-      winston.format.json()
+      winston.format.json(),
     );
 
     const consoleFormat = winston.format.combine(
       winston.format.colorize(),
       winston.format.timestamp({
-        format: 'YYYY-MM-DD HH:mm:ss'
+        format: 'YYYY-MM-DD HH:mm:ss',
       }),
       winston.format.printf(({ level, message, timestamp, ...metadata }) => {
         let msg = `${timestamp} [${level}]: ${message}`;
@@ -38,7 +38,7 @@ class Logger {
           msg += ` ${JSON.stringify(metadata)}`;
         }
         return msg;
-      })
+      }),
     );
 
     // Create transports
@@ -46,7 +46,7 @@ class Logger {
       // Console transport
       new winston.transports.Console({
         level: config.level,
-        format: consoleFormat
+        format: consoleFormat,
       }),
 
       // File transport - general logs
@@ -57,7 +57,7 @@ class Logger {
         maxSize: config.max_size,
         maxFiles: config.max_files,
         level: config.level,
-        format: logFormat
+        format: logFormat,
       }),
 
       // File transport - error logs
@@ -68,7 +68,7 @@ class Logger {
         maxSize: config.max_size,
         maxFiles: config.max_files,
         level: 'error',
-        format: logFormat
+        format: logFormat,
       }),
 
       // File transport - security alerts
@@ -79,14 +79,14 @@ class Logger {
         maxSize: config.max_size,
         maxFiles: config.max_files,
         level: 'info',
-        format: logFormat
-      })
+        format: logFormat,
+      }),
     ];
 
     return winston.createLogger({
       level: config.level,
       transports: transports,
-      exitOnError: false
+      exitOnError: false,
     });
   }
 }

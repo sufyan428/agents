@@ -1,6 +1,4 @@
-const {
-  latencyStats, analyseLoss, forecastSaturation, Hysteresis,
-} = require('@ragent/analytics');
+const { latencyStats, analyseLoss, forecastSaturation, Hysteresis } = require('@ragent/analytics');
 
 /**
  * Real link-quality analysis, replacing means and generated numbers.
@@ -47,7 +45,10 @@ class QualityAnalyzer {
 
   historyFor(dest) {
     let h = this.history.get(dest);
-    if (!h) { h = { latencies: [], probes: [] }; this.history.set(dest, h); }
+    if (!h) {
+      h = { latencies: [], probes: [] };
+      this.history.set(dest, h);
+    }
     return h;
   }
 
@@ -96,9 +97,15 @@ class QualityAnalyzer {
   /** Records interface utilisation for saturation forecasting. */
   recordUtilisation(entity, iface, utilisation, at = Date.now()) {
     let byIface = this.utilisation.get(entity);
-    if (!byIface) { byIface = new Map(); this.utilisation.set(entity, byIface); }
+    if (!byIface) {
+      byIface = new Map();
+      this.utilisation.set(entity, byIface);
+    }
     let series = byIface.get(iface);
-    if (!series) { series = []; byIface.set(iface, series); }
+    if (!series) {
+      series = [];
+      byIface.set(iface, series);
+    }
     series.push({ at, utilisation });
     if (series.length > HISTORY) series.shift();
   }
@@ -158,7 +165,12 @@ class QualityAnalyzer {
       severity: 'medium',
       title: `Jitter to ${dest} is high`,
       detail: `RFC 3550 interarrival jitter is ${a.latency.jitter}ms against a threshold of ${this.thresholds.jitterMs}ms.`,
-      evidence: { jitterMs: a.latency.jitter, thresholdMs: this.thresholds.jitterMs, method: 'RFC3550', samples: a.samples },
+      evidence: {
+        jitterMs: a.latency.jitter,
+        thresholdMs: this.thresholds.jitterMs,
+        method: 'RFC3550',
+        samples: a.samples,
+      },
     }));
 
     check('loss', a.loss.lossPercent, this.thresholds.lossPercent, () => ({
@@ -166,9 +178,7 @@ class QualityAnalyzer {
       // Bursty loss is worse than the same rate scattered: it means an outage
       // somebody noticed, not background noise.
       severity: a.loss.bursty ? 'high' : 'medium',
-      title: a.loss.bursty
-        ? `Bursty packet loss to ${dest}`
-        : `Packet loss to ${dest}`,
+      title: a.loss.bursty ? `Bursty packet loss to ${dest}` : `Packet loss to ${dest}`,
       detail: a.loss.bursty
         ? `${a.loss.lossPercent}% loss arriving in bursts, longest run ${a.loss.longestBurst} probes. ` +
           'Concentrated loss like this is an interruption, not background noise.'

@@ -3,12 +3,12 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent3.configFetch',
   'Validates a generated placeholder configuration, not the device configuration.',
-  'a working NETCONF or RESTCONF session to the router'
+  'a working NETCONF or RESTCONF session to the router',
 );
 
 /**
  * Configuration Validation Module
- * 
+ *
  * Validates router configurations against a golden baseline to detect:
  * - Configuration drift
  * - Unauthorized changes
@@ -26,10 +26,12 @@ axiosRetry(axios, {
   retries: 3,
   retryDelay: axiosRetry.exponentialDelay,
   retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || 
-           error.code === 'ECONNABORTED' ||
-           error.code === 'ETIMEDOUT';
-  }
+    return (
+      axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ETIMEDOUT'
+    );
+  },
 });
 
 class ConfigurationValidator {
@@ -63,9 +65,8 @@ class ConfigurationValidator {
 
       this.isRunning = true;
       this.logger.info('Configuration validator started', {
-        validation_interval: this.config.validation_interval
+        validation_interval: this.config.validation_interval,
       });
-
     } catch (error) {
       this.logger.error('Failed to start configuration validator:', error);
       throw error;
@@ -103,9 +104,8 @@ class ConfigurationValidator {
 
       this.logger.info('Golden baseline loaded successfully', {
         version: this.goldenBaseline.metadata?.version,
-        created: this.goldenBaseline.metadata?.created
+        created: this.goldenBaseline.metadata?.created,
       });
-
     } catch (error) {
       this.logger.error('Failed to load golden baseline:', error);
       throw new Error(`Golden baseline load failed: ${error.message}`);
@@ -149,9 +149,8 @@ class ConfigurationValidator {
       this.logger.debug('Configuration validation completed', {
         drift_score: driftScore,
         differences_count: differences.length,
-        duration: duration.toFixed(2)
+        duration: duration.toFixed(2),
       });
-
     } catch (error) {
       this.logger.error('Error validating configuration:', error);
       this.metrics.recordConfigurationValidation('error');
@@ -175,7 +174,6 @@ class ConfigurationValidator {
 
       // Fallback to SNMP for basic configuration
       return await this.fetchViaSnmp();
-
     } catch (error) {
       this.logger.error('Failed to fetch router configuration:', error);
       return null;
@@ -189,7 +187,9 @@ class ConfigurationValidator {
     // NETCONF implementation would go here
     // This is a placeholder for demonstration
     markSimulated('agent3.configFetch', this.logger);
-    this.logger.warn('Fetching configuration via NETCONF is not implemented - validating a placeholder');
+    this.logger.warn(
+      'Fetching configuration via NETCONF is not implemented - validating a placeholder',
+    );
     return this.generateSimulatedConfig();
   }
 
@@ -199,24 +199,23 @@ class ConfigurationValidator {
   async fetchViaRestconf() {
     try {
       const url = `https://${this.routerConfig.host}:${this.routerConfig.restconf.port}${this.routerConfig.restconf.base_path}/data/Cisco-IOS-XE-native:native`;
-      
+
       const response = await axios.get(url, {
         auth: {
           username: this.routerConfig.restconf.username,
-          password: this.routerConfig.restconf.password
+          password: this.routerConfig.restconf.password,
         },
         timeout: 10000,
         httpsAgent: new (require('https').Agent)({
           // Certificate verification on by default; this request carries
           // RESTCONF credentials. ROUTER_TLS_INSECURE=true opts out for a lab
           // device with a self-signed cert, deliberately and visibly.
-          rejectUnauthorized: process.env.ROUTER_TLS_INSECURE !== 'true'
-        })
+          rejectUnauthorized: process.env.ROUTER_TLS_INSECURE !== 'true',
+        }),
       });
 
       this.logger.debug('Configuration fetched via RESTCONF');
       return this.normalizeConfig(response.data);
-
     } catch (error) {
       this.logger.warn('RESTCONF fetch failed:', error.message);
       throw error;
@@ -228,7 +227,9 @@ class ConfigurationValidator {
    */
   async fetchViaSnmp() {
     markSimulated('agent3.configFetch', this.logger);
-    this.logger.warn('Fetching configuration via SNMP is not implemented - validating a placeholder');
+    this.logger.warn(
+      'Fetching configuration via SNMP is not implemented - validating a placeholder',
+    );
     return this.generateSimulatedConfig();
   }
 
@@ -239,36 +240,36 @@ class ConfigurationValidator {
     // In production, this would be replaced with actual router configuration
     return {
       system: {
-        hostname: "secure-router-01",
-        timezone: "UTC"
+        hostname: 'secure-router-01',
+        timezone: 'UTC',
       },
       interfaces: {
         management: {
           enabled: true,
           ssh_enabled: true,
-          telnet_enabled: false
-        }
+          telnet_enabled: false,
+        },
       },
       security: {
         authentication: {
-          max_failed_attempts: 5
-        }
+          max_failed_attempts: 5,
+        },
       },
       firewall: {
-        default_policy: "deny",
+        default_policy: 'deny',
         rules: [
           {
             id: 1,
-            action: "allow",
-            protocol: "tcp",
-            port: "22"
-          }
-        ]
+            action: 'allow',
+            protocol: 'tcp',
+            port: '22',
+          },
+        ],
       },
       services: {
-        disabled_services: ["telnet", "http"],
-        enabled_services: ["ssh", "https"]
-      }
+        disabled_services: ['telnet', 'http'],
+        enabled_services: ['ssh', 'https'],
+      },
     };
   }
 
@@ -282,7 +283,7 @@ class ConfigurationValidator {
       interfaces: config.interfaces || {},
       security: config.security || {},
       firewall: config.firewall || {},
-      services: config.services || {}
+      services: config.services || {},
     };
   }
 
@@ -310,7 +311,6 @@ class ConfigurationValidator {
 
       // Compare services
       this.compareSection('services', golden.services, current.services, differences);
-
     } catch (error) {
       this.logger.error('Error comparing configurations:', error);
     }
@@ -335,7 +335,7 @@ class ConfigurationValidator {
           field: key,
           golden_value: goldenSection[key],
           current_value: null,
-          severity: this.getSeverity(sectionName, key, 'missing')
+          severity: this.getSeverity(sectionName, key, 'missing'),
         });
       }
     }
@@ -349,7 +349,7 @@ class ConfigurationValidator {
           field: key,
           golden_value: null,
           current_value: currentSection[key],
-          severity: this.getSeverity(sectionName, key, 'unexpected')
+          severity: this.getSeverity(sectionName, key, 'unexpected'),
         });
       }
     }
@@ -367,7 +367,7 @@ class ConfigurationValidator {
             field: key,
             golden_value: goldenSection[key],
             current_value: currentSection[key],
-            severity: this.getSeverity(sectionName, key, 'changed')
+            severity: this.getSeverity(sectionName, key, 'changed'),
           });
         }
       }
@@ -385,13 +385,22 @@ class ConfigurationValidator {
 
     // Check for specific high-severity fields
     const criticalFields = [
-      'password', 'key', 'secret', 'token', 'credential',
-      'authentication', 'authorization', 'access_control',
-      'firewall', 'acl', 'security_policy', 'nat'
+      'password',
+      'key',
+      'secret',
+      'token',
+      'credential',
+      'authentication',
+      'authorization',
+      'access_control',
+      'firewall',
+      'acl',
+      'security_policy',
+      'nat',
     ];
 
     const fieldLower = field.toLowerCase();
-    if (criticalFields.some(cf => fieldLower.includes(cf))) {
+    if (criticalFields.some((cf) => fieldLower.includes(cf))) {
       return 'critical';
     }
 
@@ -427,7 +436,7 @@ class ConfigurationValidator {
         critical: 10,
         high: 5,
         medium: 2,
-        low: 1
+        low: 1,
       };
       driftScore += severityWeight[diff.severity] || 1;
     }
@@ -469,21 +478,17 @@ class ConfigurationValidator {
     }
 
     this.logger.info('Configuration differences detected', {
-      count: differences.length
+      count: differences.length,
     });
 
     // Group differences by severity
-    const criticalDiffs = differences.filter(d => d.severity === 'critical');
-    const highDiffs = differences.filter(d => d.severity === 'high');
-    const mediumDiffs = differences.filter(d => d.severity === 'medium');
+    const criticalDiffs = differences.filter((d) => d.severity === 'critical');
+    const highDiffs = differences.filter((d) => d.severity === 'high');
+    const mediumDiffs = differences.filter((d) => d.severity === 'medium');
 
     // Record configuration changes
     for (const diff of differences) {
-      this.metrics.recordConfigurationChange(
-        diff.section,
-        diff.type,
-        diff.severity
-      );
+      this.metrics.recordConfigurationChange(diff.section, diff.type, diff.severity);
     }
 
     // Generate alert for critical differences
@@ -497,9 +502,10 @@ class ConfigurationValidator {
           router: this.routerConfig.host,
           critical_changes: criticalDiffs,
           total_differences: differences.length,
-          recommended_action: 'IMMEDIATE INVESTIGATION REQUIRED. Configuration may have been tampered with.',
-          timestamp: new Date().toISOString()
-        }
+          recommended_action:
+            'IMMEDIATE INVESTIGATION REQUIRED. Configuration may have been tampered with.',
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -514,8 +520,8 @@ class ConfigurationValidator {
           router: this.routerConfig.host,
           high_changes: highDiffs,
           recommended_action: 'Review configuration changes and validate with security team.',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -530,8 +536,8 @@ class ConfigurationValidator {
           router: this.routerConfig.host,
           changes: mediumDiffs,
           recommended_action: 'Review changes and update golden baseline if intentional.',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }
@@ -544,7 +550,7 @@ class ConfigurationValidator {
       running: this.isRunning,
       golden_baseline_loaded: !!this.goldenBaseline,
       baseline_version: this.goldenBaseline?.metadata?.version,
-      current_config_fetched: !!this.currentConfig
+      current_config_fetched: !!this.currentConfig,
     };
   }
 }

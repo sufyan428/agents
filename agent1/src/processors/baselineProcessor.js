@@ -38,7 +38,7 @@ class BaselineProcessor {
 
     this.baselines = new BaselineSet({
       alpha: 0.1,
-      warmupSamples: 12,   // 6 minutes at a 30s poll: long enough to be safe, short enough to be useful
+      warmupSamples: 12, // 6 minutes at a 30s poll: long enough to be safe, short enough to be useful
       madWindow: 200,
       seasonal: true,
       anomalyZ: 3.5,
@@ -92,13 +92,18 @@ class BaselineProcessor {
           cleared: false,
           verdict,
           finding: this.emit({
-            entity, metric, at,
+            entity,
+            metric,
+            at,
             kind: `${metric}_threshold_exceeded`,
             severity: band === 'critical' ? 'critical' : 'high',
             title: `${metric} above the ${band} threshold on ${entity}`,
             detail: `${value}${unit} exceeded the configured ${band} threshold of ${limit}${unit}.`,
             evidence: {
-              value, threshold: limit, band, unit,
+              value,
+              threshold: limit,
+              band,
+              unit,
               baselineExpected: verdict.expected,
               baselineZ: verdict.z,
               basis: 'configured_threshold',
@@ -122,7 +127,9 @@ class BaselineProcessor {
           cleared: false,
           verdict,
           finding: this.emit({
-            entity, metric, at,
+            entity,
+            metric,
+            at,
             kind: `${metric}_baseline_anomaly`,
             severity: Math.abs(verdict.z) >= 6 ? 'high' : 'medium',
             title: `${metric} is unusually ${direction} normal on ${entity}`,
@@ -130,7 +137,8 @@ class BaselineProcessor {
               `${value}${unit} is ${Math.abs(verdict.z)} MADs ${direction} the learned baseline of ` +
               `${verdict.expected}${unit}. No configured threshold was crossed.`,
             evidence: {
-              value, unit,
+              value,
+              unit,
               baselineExpected: verdict.expected,
               baselineSpread: verdict.spread,
               z: verdict.z,
@@ -153,16 +161,19 @@ class BaselineProcessor {
   }
 
   emit({ entity, metric, kind, severity, title, detail, evidence, at }) {
-    const { finding, isNew } = this.findings.report({
-      agent: 'agent1-monitoring',
-      kind,
-      severity,
-      entity: { type: 'router', id: entity, name: entity },
-      title,
-      detail,
-      evidence,
-      tags: [metric],
-    }, at);
+    const { finding, isNew } = this.findings.report(
+      {
+        agent: 'agent1-monitoring',
+        kind,
+        severity,
+        entity: { type: 'router', id: entity, name: entity },
+        title,
+        detail,
+        evidence,
+        tags: [metric],
+      },
+      at,
+    );
     if (isNew) logger.warn(`FINDING [${severity}] ${title}`);
     return finding;
   }

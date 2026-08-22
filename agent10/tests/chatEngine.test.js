@@ -9,7 +9,9 @@ function makeEngine() {
 
 test('parseIntent: parses clean JSON', () => {
   const engine = makeEngine();
-  const result = engine.parseIntent('{"action": "get_overview", "agentName": null, "reply": "checking"}');
+  const result = engine.parseIntent(
+    '{"action": "get_overview", "agentName": null, "reply": "checking"}',
+  );
   assert.strictEqual(result.action, 'get_overview');
 });
 
@@ -22,7 +24,8 @@ test('parseIntent: extracts JSON from a markdown code fence', () => {
 
 test('parseIntent: extracts JSON embedded in surrounding prose', () => {
   const engine = makeEngine();
-  const text = 'Sure, here you go: {"action": "get_incidents", "agentName": null, "reply": "ok"} hope that helps!';
+  const text =
+    'Sure, here you go: {"action": "get_incidents", "agentName": null, "reply": "ok"} hope that helps!';
   const result = engine.parseIntent(text);
   assert.strictEqual(result.action, 'get_incidents');
 });

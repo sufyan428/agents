@@ -4,7 +4,10 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 
 export class ConfigError extends Error {
-  constructor(message: string, readonly file?: string) {
+  constructor(
+    message: string,
+    readonly file?: string,
+  ) {
     super(message);
     this.name = 'ConfigError';
   }

@@ -6,7 +6,10 @@ const QualityAnalyzer = require('../modules/quality-analyzer');
 const silent = { warn() {}, info() {}, debug() {} };
 const make = (thresholds = {}) => {
   const findings = new FindingStore();
-  return { findings, qa: new QualityAnalyzer({ findingStore: findings, logger: silent, thresholds }) };
+  return {
+    findings,
+    qa: new QualityAnalyzer({ findingStore: findings, logger: silent, thresholds }),
+  };
 };
 
 /** n good probes at `ms`, then `slow` probes at `slowMs`. */
@@ -35,7 +38,8 @@ test('jitter uses the RFC 3550 definition, not the last difference', () => {
 
 test('bursty and scattered loss at the same rate are graded differently', () => {
   const scattered = make({ lossPercent: 1 });
-  for (let i = 0; i < 100; i++) scattered.qa.recordProbe('s', { latencyMs: 10, lost: i % 25 === 0 });
+  for (let i = 0; i < 100; i++)
+    scattered.qa.recordProbe('s', { latencyMs: 10, lost: i % 25 === 0 });
   // Two evaluations: raiseAfter is 2, so one reading never raises an alarm.
   scattered.qa.evaluate('s', 'R1');
   scattered.qa.evaluate('s', 'R1');
@@ -72,7 +76,8 @@ test('a sustained problem produces one finding, not one per probe', () => {
 test('recovery clears the finding', () => {
   const { qa, findings } = make({ p95LatencyMs: 50 });
   feed(qa, 'd', { good: 40, ms: 400 });
-  qa.evaluate('d', 'R1'); qa.evaluate('d', 'R1');
+  qa.evaluate('d', 'R1');
+  qa.evaluate('d', 'R1');
   assert.ok(findings.list().some((f) => f.kind === 'latency_tail_high'));
   // Flush the history with good probes, then re-evaluate.
   feed(qa, 'd', { good: 120, ms: 5 });

@@ -12,7 +12,7 @@ class SelfHealing {
       manualInterventionRequired: 0,
       healingAttempts: 0,
       successfulHealings: 0,
-      failedHealings: 0
+      failedHealings: 0,
     };
   }
 
@@ -24,7 +24,7 @@ class SelfHealing {
       return {
         router: router.name,
         autoHealed: false,
-        reason: 'Auto-healing disabled'
+        reason: 'Auto-healing disabled',
       };
     }
 
@@ -39,16 +39,16 @@ class SelfHealing {
         results.push({
           success: false,
           violation,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
     return {
       router: router.name,
-      autoHealed: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-      results
+      autoHealed: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
     };
   }
 
@@ -84,14 +84,14 @@ class SelfHealing {
         success: false,
         violation,
         reason: 'No healing strategy available',
-        requiresManualIntervention: true
+        requiresManualIntervention: true,
       };
     }
 
     if (!this.isActionAllowed(healingStrategy.type)) {
       logger.warn(
         `Healing action "${healingStrategy.type}" is not in self_healing.allowed_actions - ` +
-        `not applying it to ${router.name}. Add it to the allowlist to enable it.`
+          `not applying it to ${router.name}. Add it to the allowlist to enable it.`,
       );
       return {
         success: false,
@@ -99,21 +99,21 @@ class SelfHealing {
         skipped: 'not_allowlisted',
         violation: violation.policy,
         healingStrategy: healingStrategy.name,
-        requiresHumanApproval: true
+        requiresHumanApproval: true,
       };
     }
 
     if (this.isDryRun) {
       logger.info(
         `DRY RUN: would apply "${healingStrategy.type}" to ${router.name} for ` +
-        `${violation.policy}. Set self_healing.dry_run: false to apply for real.`
+          `${violation.policy}. Set self_healing.dry_run: false to apply for real.`,
       );
       return {
         success: true,
         applied: false,
         dryRun: true,
         violation: violation.policy,
-        healingStrategy: healingStrategy.name
+        healingStrategy: healingStrategy.name,
       };
     }
 
@@ -122,27 +122,27 @@ class SelfHealing {
     for (let attempt = 1; attempt <= this.config.self_healing.max_retries; attempt++) {
       try {
         logger.info(`Healing attempt ${attempt} for ${violation.policy} on ${router.name}`);
-        
+
         const result = await this.applyHealing(router, violation, healingStrategy);
-        
+
         this.metrics.successfulHealings++;
         this.metrics.autoHealed++;
-        
+
         // Verify healing was successful
         const verification = await this.verifyHealing(router, violation);
-        
+
         return {
           success: true,
           violation,
           healingStrategy: healingStrategy.name,
           attempts: attempt,
           result,
-          verification
+          verification,
         };
       } catch (error) {
         lastError = error;
         logger.warn(`Healing attempt ${attempt} failed: ${error.message}`);
-        
+
         if (attempt < this.config.self_healing.max_retries) {
           await this.delay(this.config.self_healing.retry_delay * 1000);
         }
@@ -150,76 +150,75 @@ class SelfHealing {
     }
 
     this.metrics.failedHealings++;
-    
+
     return {
       success: false,
       violation,
       healingStrategy: healingStrategy.name,
       attempts: this.config.self_healing.max_retries,
       error: lastError.message,
-      requiresManualIntervention: true
+      requiresManualIntervention: true,
     };
   }
 
   async getHealingStrategy(violation) {
     // Define healing strategies for common violations
     const strategies = {
-      'interface_down': {
+      interface_down: {
         name: 'interface_down',
         type: 'interface_config',
         action: 'up',
-        severity: 'high'
+        severity: 'high',
       },
-      'syslog_disabled': {
+      syslog_disabled: {
         name: 'syslog_disabled',
         type: 'syslog_config',
         action: 'enable',
-        severity: 'medium'
+        severity: 'medium',
       },
-      'snmp_community_weak': {
+      snmp_community_weak: {
         name: 'snmp_community_weak',
         type: 'snmp_set',
         action: 'set_community',
-        severity: 'high'
+        severity: 'high',
       },
-      'high_cpu_usage': {
+      high_cpu_usage: {
         name: 'high_cpu_usage',
         type: 'system',
         action: 'log_only',
-        severity: 'low'
+        severity: 'low',
       },
-      'firmware_outdated': {
+      firmware_outdated: {
         name: 'firmware_outdated',
         type: 'firmware',
         action: 'schedule_update',
-        severity: 'medium'
+        severity: 'medium',
       },
-      'routing_loop_detected': {
+      routing_loop_detected: {
         name: 'routing_loop_detected',
         type: 'routing',
         action: 'clear_routes',
-        severity: 'critical'
+        severity: 'critical',
       },
-      'ntp_not_synced': {
+      ntp_not_synced: {
         name: 'ntp_not_synced',
         type: 'ntp_config',
         action: 'resync',
-        severity: 'low'
+        severity: 'low',
       },
-      'security_policy_violation': {
+      security_policy_violation: {
         name: 'security_policy_violation',
         type: 'security',
         action: 'alert_only',
-        severity: 'critical'
-      }
+        severity: 'critical',
+      },
     };
 
     // Match violation to strategy based on policy name or description
     const policyName = violation.policy.toLowerCase();
-    
+
     for (const [key, strategy] of Object.entries(strategies)) {
-      if (policyName.includes(key) || 
-          violation.description.toLowerCase().includes(key)) {
+      if (policyName.includes(key) || violation.description.toLowerCase().includes(key)) {
         return strategy;
       }
     }
@@ -230,7 +229,7 @@ class SelfHealing {
         name: 'default_critical',
         type: 'alert_only',
         action: 'manual_review',
-        severity: violation.severity
+        severity: violation.severity,
       };
     }
 
@@ -243,25 +242,25 @@ class SelfHealing {
     switch (strategy.type) {
       case 'interface_config':
         return await this.healInterface(router, violation, strategy);
-      
+
       case 'syslog_config':
         return await this.healSyslog(router, violation, strategy);
-      
+
       case 'snmp_set':
         return await this.healSnmp(router, violation, strategy);
-      
+
       case 'routing':
         return await this.healRouting(router, violation, strategy);
-      
+
       case 'ntp_config':
         return await this.healNtp(router, violation, strategy);
-      
+
       case 'firmware':
         return await this.healFirmware(router, violation, strategy);
-      
+
       case 'alert_only':
         return await this.healAlert(router, violation, strategy);
-      
+
       default:
         throw new Error(`Unknown healing type: ${strategy.type}`);
     }
@@ -274,24 +273,24 @@ class SelfHealing {
     // Set interface admin status to up
     const interfaceIndex = this.extractInterfaceIndex(violation);
     const adminStatusOid = `1.3.6.1.2.1.2.2.1.7.${interfaceIndex}`;
-    
+
     await snmp.set(adminStatusOid, 1, 'Integer'); // 1 = up
 
     logger.info(`Interface ${interfaceIndex} set to UP on ${router.name}`);
-    
+
     this.healingActions.push({
       router: router.name,
       type: 'interface_heal',
       action: 'interface_up',
       interface: interfaceIndex,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'interface',
       action: 'up',
       interface: interfaceIndex,
-      message: 'Interface set to UP'
+      message: 'Interface set to UP',
     };
   }
 
@@ -300,22 +299,22 @@ class SelfHealing {
     const configChange = {
       type: 'syslog_config',
       action: 'enable',
-      severity: strategy.severity
+      severity: strategy.severity,
     };
 
     await this.configManager.pushConfig(router, [configChange]);
-    
+
     this.healingActions.push({
       router: router.name,
       type: 'syslog_heal',
       action: 'enable',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'syslog',
       action: 'enable',
-      message: 'Syslog enabled'
+      message: 'Syslog enabled',
     };
   }
 
@@ -352,7 +351,7 @@ class SelfHealing {
       type: 'snmp_heal',
       action: 'suggested_only',
       applied: false,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
@@ -360,80 +359,82 @@ class SelfHealing {
       action: 'suggested_only',
       applied: false,
       requiresHumanApproval: true,
-      message
+      message,
     };
   }
 
   async healRouting(router, _violation, _strategy) {
     // Clear routing table or specific routes
     logger.warn(`Clearing routing table on ${router.name}`);
-    
+
     this.healingActions.push({
       router: router.name,
       type: 'routing_heal',
       action: 'clear_routes',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'routing',
       action: 'clear_routes',
-      message: 'Routing table cleared, routes will be relearned'
+      message: 'Routing table cleared, routes will be relearned',
     };
   }
 
   async healNtp(router, _violation, _strategy) {
     // Resync NTP
     logger.info(`Resyncing NTP on ${router.name}`);
-    
+
     this.healingActions.push({
       router: router.name,
       type: 'ntp_heal',
       action: 'resync',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'ntp',
       action: 'resync',
-      message: 'NTP resynchronization triggered'
+      message: 'NTP resynchronization triggered',
     };
   }
 
   async healFirmware(router, _violation, _strategy) {
     // Schedule firmware update
     logger.info(`Scheduling firmware update for ${router.name}`);
-    
+
     this.healingActions.push({
       router: router.name,
       type: 'firmware_heal',
       action: 'schedule_update',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'firmware',
       action: 'schedule_update',
-      message: 'Firmware update scheduled'
+      message: 'Firmware update scheduled',
     };
   }
 
   async healAlert(router, violation, _strategy) {
     // Just alert, no automatic healing
-    logger.warn(`Alert only for ${violation.policy} on ${router.name} - manual intervention required`);
-    
+    logger.warn(
+      `Alert only for ${violation.policy} on ${router.name} - manual intervention required`,
+    );
+
     this.healingActions.push({
       router: router.name,
       type: 'alert',
       action: 'manual_review',
       violation: violation.policy,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return {
       type: 'alert',
       action: 'manual_review',
-      message: 'Manual intervention required'
+      message: 'Manual intervention required',
     };
   }
 
@@ -443,25 +444,23 @@ class SelfHealing {
 
     // Re-check the policy to verify healing
     const results = await this.policyChecker.checkRouter(router);
-    const healed = results.violations.filter(v => 
-      v.policy === violation.policy
-    ).length === 0;
+    const healed = results.violations.filter((v) => v.policy === violation.policy).length === 0;
 
     return {
       verified: healed,
-      remainingViolations: healed ? 0 : 1
+      remainingViolations: healed ? 0 : 1,
     };
   }
 
   extractInterfaceIndex(violation) {
     // Extract interface index from violation description or OID
-    const match = violation.description.match(/interface\s+(\d+)/i) ||
-                  violation.description.match(/(\d+)$/);
+    const match =
+      violation.description.match(/interface\s+(\d+)/i) || violation.description.match(/(\d+)$/);
     return match ? match[1] : '1';
   }
 
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   getHealingActions() {
@@ -479,7 +478,7 @@ class SelfHealing {
       manualInterventionRequired: 0,
       healingAttempts: 0,
       successfulHealings: 0,
-      failedHealings: 0
+      failedHealings: 0,
     };
   }
 }

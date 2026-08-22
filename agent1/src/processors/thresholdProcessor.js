@@ -25,12 +25,7 @@ class ThresholdProcessor {
 
     // Check CPU threshold
     if (metrics.cpu !== null) {
-      const cpuAlert = this.checkThreshold(
-        'cpu',
-        metrics.cpu,
-        metrics.router,
-        this.thresholds.cpu
-      );
+      const cpuAlert = this.checkThreshold('cpu', metrics.cpu, metrics.router, this.thresholds.cpu);
       if (cpuAlert) {
         alerts.push(cpuAlert);
         prometheus.incrementAlert(metrics.router, cpuAlert.severity, 'cpu');
@@ -43,7 +38,7 @@ class ThresholdProcessor {
         'memory',
         parseFloat(metrics.memory),
         metrics.router,
-        this.thresholds.memory
+        this.thresholds.memory,
       );
       if (memoryAlert) {
         alerts.push(memoryAlert);
@@ -57,7 +52,7 @@ class ThresholdProcessor {
         'temperature',
         metrics.temperature,
         metrics.router,
-        this.thresholds.temperature
+        this.thresholds.temperature,
       );
       if (tempAlert) {
         alerts.push(tempAlert);
@@ -66,7 +61,7 @@ class ThresholdProcessor {
     }
 
     // Send all triggered alerts
-    alerts.forEach(alert => {
+    alerts.forEach((alert) => {
       alertManager.sendAlert(alert);
     });
 
@@ -83,7 +78,7 @@ class ThresholdProcessor {
       'bandwidth',
       utilizationPercentage,
       routerName,
-      this.thresholds.bandwidth
+      this.thresholds.bandwidth,
     );
 
     if (bandwidthAlert) {
@@ -106,7 +101,7 @@ class ThresholdProcessor {
       'latency',
       latencyMs,
       routerName,
-      this.thresholds.latency
+      this.thresholds.latency,
     );
 
     if (latencyAlert) {
@@ -129,7 +124,7 @@ class ThresholdProcessor {
       'packet_loss',
       packetLossPercentage,
       routerName,
-      this.thresholds.packet_loss
+      this.thresholds.packet_loss,
     );
 
     if (packetLossAlert) {
@@ -151,7 +146,7 @@ class ThresholdProcessor {
       'failed_logins',
       failedLoginsCount,
       routerName,
-      this.thresholds.failed_logins
+      this.thresholds.failed_logins,
     );
 
     if (loginAlert) {
@@ -174,7 +169,7 @@ class ThresholdProcessor {
       'interface_errors',
       errorsPerMinute,
       routerName,
-      this.thresholds.interface_errors
+      this.thresholds.interface_errors,
     );
 
     if (errorsAlert) {
@@ -212,7 +207,7 @@ class ThresholdProcessor {
         value,
         threshold: threshold[severity],
         timestamp: now,
-        message: `${metric.toUpperCase()} ${severity} on ${routerName}: ${value}${this.getUnit(metric)}`
+        message: `${metric.toUpperCase()} ${severity} on ${routerName}: ${value}${this.getUnit(metric)}`,
       };
     }
 
@@ -229,7 +224,7 @@ class ThresholdProcessor {
       temperature: '°C',
       bandwidth: '%',
       latency: 'ms',
-      packet_loss: '%'
+      packet_loss: '%',
     };
 
     return units[metric] || '';

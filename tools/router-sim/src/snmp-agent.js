@@ -48,7 +48,11 @@ class SnmpAgent {
 
     const scalar = (name, oid, scalarType) =>
       mib.registerProvider({
-        name, oid, type: snmp.MibProviderType.Scalar, scalarType, maxAccess: RO(),
+        name,
+        oid,
+        type: snmp.MibProviderType.Scalar,
+        scalarType,
+        maxAccess: RO(),
       });
 
     // ---- system group (real scalars, so .0 is correct) ------------------
@@ -66,16 +70,16 @@ class SnmpAgent {
       type: snmp.MibProviderType.Table,
       maxAccess: RO(),
       tableColumns: [
-        { number: 1,  name: 'ifIndex',       type: snmp.ObjectType.Integer,     maxAccess: RO() },
-        { number: 2,  name: 'ifDescr',       type: snmp.ObjectType.OctetString, maxAccess: RO() },
-        { number: 3,  name: 'ifType',        type: snmp.ObjectType.Integer,     maxAccess: RO() },
-        { number: 5,  name: 'ifSpeed',       type: snmp.ObjectType.Gauge,       maxAccess: RO() },
-        { number: 7,  name: 'ifAdminStatus', type: snmp.ObjectType.Integer,     maxAccess: RO() },
-        { number: 8,  name: 'ifOperStatus',  type: snmp.ObjectType.Integer,     maxAccess: RO() },
-        { number: 10, name: 'ifInOctets',    type: snmp.ObjectType.Counter,     maxAccess: RO() },
-        { number: 14, name: 'ifInErrors',    type: snmp.ObjectType.Counter,     maxAccess: RO() },
-        { number: 16, name: 'ifOutOctets',   type: snmp.ObjectType.Counter,     maxAccess: RO() },
-        { number: 20, name: 'ifOutErrors',   type: snmp.ObjectType.Counter,     maxAccess: RO() },
+        { number: 1, name: 'ifIndex', type: snmp.ObjectType.Integer, maxAccess: RO() },
+        { number: 2, name: 'ifDescr', type: snmp.ObjectType.OctetString, maxAccess: RO() },
+        { number: 3, name: 'ifType', type: snmp.ObjectType.Integer, maxAccess: RO() },
+        { number: 5, name: 'ifSpeed', type: snmp.ObjectType.Gauge, maxAccess: RO() },
+        { number: 7, name: 'ifAdminStatus', type: snmp.ObjectType.Integer, maxAccess: RO() },
+        { number: 8, name: 'ifOperStatus', type: snmp.ObjectType.Integer, maxAccess: RO() },
+        { number: 10, name: 'ifInOctets', type: snmp.ObjectType.Counter, maxAccess: RO() },
+        { number: 14, name: 'ifInErrors', type: snmp.ObjectType.Counter, maxAccess: RO() },
+        { number: 16, name: 'ifOutOctets', type: snmp.ObjectType.Counter, maxAccess: RO() },
+        { number: 20, name: 'ifOutErrors', type: snmp.ObjectType.Counter, maxAccess: RO() },
       ],
       tableIndex: [{ columnName: 'ifIndex' }],
     });
@@ -88,9 +92,9 @@ class SnmpAgent {
       type: snmp.MibProviderType.Table,
       maxAccess: RO(),
       tableColumns: [
-        { number: 1, name: 'cpmCPUTotalIndex',    type: snmp.ObjectType.Integer, maxAccess: NA() },
-        { number: 8, name: 'cpmCPUTotal5secRev',  type: snmp.ObjectType.Gauge,   maxAccess: RO() },
-        { number: 7, name: 'cpmCPUTotal1minRev',  type: snmp.ObjectType.Gauge,   maxAccess: RO() },
+        { number: 1, name: 'cpmCPUTotalIndex', type: snmp.ObjectType.Integer, maxAccess: NA() },
+        { number: 8, name: 'cpmCPUTotal5secRev', type: snmp.ObjectType.Gauge, maxAccess: RO() },
+        { number: 7, name: 'cpmCPUTotal1minRev', type: snmp.ObjectType.Gauge, maxAccess: RO() },
       ],
       tableIndex: [{ columnName: 'cpmCPUTotalIndex' }],
     });
@@ -103,18 +107,30 @@ class SnmpAgent {
       type: snmp.MibProviderType.Table,
       maxAccess: RO(),
       tableColumns: [
-        { number: 1, name: 'ciscoMemoryPoolType',  type: snmp.ObjectType.Integer,     maxAccess: NA() },
-        { number: 2, name: 'ciscoMemoryPoolName',  type: snmp.ObjectType.OctetString, maxAccess: RO() },
-        { number: 5, name: 'ciscoMemoryPoolUsed',  type: snmp.ObjectType.Gauge,       maxAccess: RO() },
-        { number: 6, name: 'ciscoMemoryPoolFree',  type: snmp.ObjectType.Gauge,       maxAccess: RO() },
-        { number: 7, name: 'ciscoMemoryPoolLargestFree', type: snmp.ObjectType.Gauge, maxAccess: RO() },
+        { number: 1, name: 'ciscoMemoryPoolType', type: snmp.ObjectType.Integer, maxAccess: NA() },
+        {
+          number: 2,
+          name: 'ciscoMemoryPoolName',
+          type: snmp.ObjectType.OctetString,
+          maxAccess: RO(),
+        },
+        { number: 5, name: 'ciscoMemoryPoolUsed', type: snmp.ObjectType.Gauge, maxAccess: RO() },
+        { number: 6, name: 'ciscoMemoryPoolFree', type: snmp.ObjectType.Gauge, maxAccess: RO() },
+        {
+          number: 7,
+          name: 'ciscoMemoryPoolLargestFree',
+          type: snmp.ObjectType.Gauge,
+          maxAccess: RO(),
+        },
       ],
       tableIndex: [{ columnName: 'ciscoMemoryPoolType' }],
     });
 
     this.agent = snmp.createAgent(
       { port: this.port, disableAuthorization: true },
-      (error) => { if (error) this.logger.error(`SNMP agent error: ${error.message}`); },
+      (error) => {
+        if (error) this.logger.error(`SNMP agent error: ${error.message}`);
+      },
       mib,
     );
     this.agent.getAuthorizer().addCommunity(this.community);
@@ -165,8 +181,11 @@ class SnmpAgent {
     this.mib.setScalarValue('sysLocation', d.location);
 
     const cell = (provider, column, index, value) => {
-      try { this.mib.setTableSingleCell(provider, column, [index], value); }
-      catch (e) { this.logger.debug?.(`cell ${provider}.${column}.${index}: ${e.message}`); }
+      try {
+        this.mib.setTableSingleCell(provider, column, [index], value);
+      } catch (e) {
+        this.logger.debug?.(`cell ${provider}.${column}.${index}: ${e.message}`);
+      }
     };
 
     cell('cpmCPUTotalEntry', 8, 1, Math.round(d.cpu));
@@ -189,7 +208,11 @@ class SnmpAgent {
 
   stop() {
     if (this.refresh) clearInterval(this.refresh);
-    try { this.agent?.close?.(); } catch { /* already closed */ }
+    try {
+      this.agent?.close?.();
+    } catch {
+      /* already closed */
+    }
   }
 }
 

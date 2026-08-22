@@ -21,7 +21,7 @@ class SyslogCollector {
     this.stats = {
       totalEvents: 0,
       failedLogins: 0,
-      securityEvents: 0
+      securityEvents: 0,
     };
   }
 
@@ -30,14 +30,14 @@ class SyslogCollector {
    */
   initialize() {
     const syslogConfig = config.getSyslogConfig();
-    
+
     if (!syslogConfig.enabled) {
       logger.info('Syslog collector disabled in configuration');
       return;
     }
 
     // Convert 'udp' to 'udp4' for Node.js dgram compatibility
-    const protocol = syslogConfig.protocol === 'udp' ? 'udp4' : (syslogConfig.protocol || 'udp4');
+    const protocol = syslogConfig.protocol === 'udp' ? 'udp4' : syslogConfig.protocol || 'udp4';
     this.server = dgram.createSocket(protocol);
     const port = syslogConfig.port || 514;
 
@@ -62,11 +62,12 @@ class SyslogCollector {
       // RFC 5424 allows large messages; this listener is reachable by anyone
       // who can send UDP to the port, so oversized input is truncated rather
       // than retained in the in-memory event ring.
-      const message = msg.length > MAX_MESSAGE_BYTES
-        ? `${msg.subarray(0, MAX_MESSAGE_BYTES).toString('utf8')}...[truncated]`
-        : msg.toString('utf8');
+      const message =
+        msg.length > MAX_MESSAGE_BYTES
+          ? `${msg.subarray(0, MAX_MESSAGE_BYTES).toString('utf8')}...[truncated]`
+          : msg.toString('utf8');
       const event = this.parseSyslogMessage(message, rinfo);
-      
+
       this.stats.totalEvents++;
       this.events.push(event);
 
@@ -87,7 +88,6 @@ class SyslogCollector {
       if (this.events.length > 1000) {
         this.events.shift();
       }
-
     } catch (error) {
       logger.error(`Failed to parse syslog message from ${rinfo.address}: ${error.message}`);
     }
@@ -98,10 +98,10 @@ class SyslogCollector {
    */
   parseSyslogMessage(message, rinfo) {
     const now = new Date();
-    
+
     // Simple syslog parsing
     const priorityMatch = message.match(/^<(\d+)>/);
-    
+
     return {
       timestamp: now.toISOString(),
       source: rinfo.address,
@@ -110,7 +110,7 @@ class SyslogCollector {
       facility: null,
       severity: null,
       message: message.replace(/^<\d+>/, '').trim(),
-      raw: message
+      raw: message,
     };
   }
 
@@ -123,10 +123,10 @@ class SyslogCollector {
       /authentication failed/i,
       /login failed/i,
       /access denied/i,
-      /invalid user/i
+      /invalid user/i,
     ];
 
-    return failedLoginPatterns.some(pattern => pattern.test(message));
+    return failedLoginPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -139,10 +139,10 @@ class SyslogCollector {
       /attack/i,
       /intrusion/i,
       /malware/i,
-      /virus/i
+      /virus/i,
     ];
 
-    return securityPatterns.some(pattern => pattern.test(message));
+    return securityPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -181,7 +181,7 @@ class SyslogCollector {
    */
   findRouterByIP(ip) {
     const routers = config.getEnabledRouters();
-    const router = routers.find(r => r.ip === ip);
+    const router = routers.find((r) => r.ip === ip);
     return router ? router.name : null;
   }
 
@@ -191,9 +191,9 @@ class SyslogCollector {
   getFailedLoginStats() {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
-    
+
     // Count failed logins in the last minute
-    const recentEvents = this.events.filter(event => {
+    const recentEvents = this.events.filter((event) => {
       const eventTime = new Date(event.timestamp).getTime();
       return eventTime > oneMinuteAgo && this.isFailedLogin(event.message);
     });
@@ -201,7 +201,7 @@ class SyslogCollector {
     return {
       total: this.stats.failedLogins,
       lastMinute: recentEvents.length,
-      bySource: Object.fromEntries(this.failedLogins)
+      bySource: Object.fromEntries(this.failedLogins),
     };
   }
 
@@ -219,7 +219,7 @@ class SyslogCollector {
     return {
       ...this.stats,
       failedLoginStats: this.getFailedLoginStats(),
-      eventsInMemory: this.events.length
+      eventsInMemory: this.events.length,
     };
   }
 
@@ -229,8 +229,8 @@ class SyslogCollector {
   clearOldEvents(maxAgeMinutes = 5) {
     const now = Date.now();
     const maxAge = maxAgeMinutes * 60 * 1000;
-    
-    this.events = this.events.filter(event => {
+
+    this.events = this.events.filter((event) => {
       const eventTime = new Date(event.timestamp).getTime();
       return now - eventTime <= maxAge;
     });

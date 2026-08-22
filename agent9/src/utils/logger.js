@@ -13,7 +13,7 @@ const logger = winston.createLogger({
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.errors({ stack: true }),
     winston.format.splat(),
-    winston.format.json()
+    winston.format.json(),
   ),
   defaultMeta: { service: 'ai-remediation-agent' },
   transports: [
@@ -22,21 +22,21 @@ const logger = winston.createLogger({
         winston.format.colorize(),
         winston.format.printf(({ timestamp, level, message }) => {
           return `${timestamp} [ai-remediation-agent] ${level}: ${message}`;
-        })
-      )
+        }),
+      ),
     }),
     new winston.transports.File({
       filename: path.join(logsDir, 'agent9.log'),
       maxsize: 10485760,
-      maxFiles: 5
+      maxFiles: 5,
     }),
     new winston.transports.File({
       filename: path.join(logsDir, 'agent9-error.log'),
       level: 'error',
       maxsize: 10485760,
-      maxFiles: 5
-    })
-  ]
+      maxFiles: 5,
+    }),
+  ],
 });
 
 module.exports = logger;

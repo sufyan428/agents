@@ -3,7 +3,7 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent5.firmwareCheck',
   'Compares against a hardcoded version table, not a vendor advisory feed.',
-  'a vendor PSIRT / NVD feed lookup'
+  'a vendor PSIRT / NVD feed lookup',
 );
 
 const cron = require('node-cron');
@@ -23,7 +23,7 @@ class TaskScheduler {
       tasksExecuted: 0,
       tasksSuccessful: 0,
       tasksFailed: 0,
-      lastExecutionTime: null
+      lastExecutionTime: null,
     };
   }
 
@@ -32,46 +32,36 @@ class TaskScheduler {
 
     // Policy Compliance Check
     if (this.config.scheduling.policy_check_interval) {
-      this.scheduleTask(
-        'policy_check',
-        this.config.scheduling.policy_check_interval,
-        () => this.runPolicyCheck(routers)
+      this.scheduleTask('policy_check', this.config.scheduling.policy_check_interval, () =>
+        this.runPolicyCheck(routers),
       );
     }
 
     // Configuration Backup
     if (this.config.scheduling.backup_interval) {
-      this.scheduleTask(
-        'config_backup',
-        this.config.scheduling.backup_interval,
-        () => this.runConfigBackup(routers)
+      this.scheduleTask('config_backup', this.config.scheduling.backup_interval, () =>
+        this.runConfigBackup(routers),
       );
     }
 
     // Firmware Check
     if (this.config.scheduling.firmware_check_interval) {
-      this.scheduleTask(
-        'firmware_check',
-        this.config.scheduling.firmware_check_interval,
-        () => this.runFirmwareCheck(routers)
+      this.scheduleTask('firmware_check', this.config.scheduling.firmware_check_interval, () =>
+        this.runFirmwareCheck(routers),
       );
     }
 
     // Audit Report Generation
     if (this.config.scheduling.audit_report_interval) {
-      this.scheduleTask(
-        'audit_report',
-        this.config.scheduling.audit_report_interval,
-        () => this.runAuditReport(routers)
+      this.scheduleTask('audit_report', this.config.scheduling.audit_report_interval, () =>
+        this.runAuditReport(routers),
       );
     }
 
     // Configuration Compliance Check
     if (this.config.scheduling.config_compliance_check) {
-      this.scheduleTask(
-        'config_compliance',
-        this.config.scheduling.config_compliance_check,
-        () => this.runConfigComplianceCheck(routers)
+      this.scheduleTask('config_compliance', this.config.scheduling.config_compliance_check, () =>
+        this.runConfigComplianceCheck(routers),
       );
     }
 
@@ -81,17 +71,21 @@ class TaskScheduler {
 
   scheduleTask(name, schedule, taskFunction) {
     if (cron.validate(schedule)) {
-      const task = cron.schedule(schedule, async () => {
-        await this.executeTask(name, taskFunction);
-      }, {
-        scheduled: true,
-        timezone: 'UTC'
-      });
+      const task = cron.schedule(
+        schedule,
+        async () => {
+          await this.executeTask(name, taskFunction);
+        },
+        {
+          scheduled: true,
+          timezone: 'UTC',
+        },
+      );
 
       this.scheduledTasks.set(name, {
         task,
         schedule,
-        name
+        name,
       });
 
       logger.info(`Scheduled task '${name}' with schedule: ${schedule}`);
@@ -114,7 +108,7 @@ class TaskScheduler {
         startTime: new Date(startTime).toISOString(),
         endTime: new Date().toISOString(),
         duration,
-        result
+        result,
       });
 
       this.metrics.tasksExecuted++;
@@ -130,7 +124,7 @@ class TaskScheduler {
         routerHost: 'N/A',
         severity: 'info',
         details: { duration, success: true },
-        metadata: { taskId: name }
+        metadata: { taskId: name },
       });
 
       return result;
@@ -143,7 +137,7 @@ class TaskScheduler {
         startTime: new Date(startTime).toISOString(),
         endTime: new Date().toISOString(),
         duration,
-        error: error.message
+        error: error.message,
       });
 
       this.metrics.tasksExecuted++;
@@ -159,7 +153,7 @@ class TaskScheduler {
         routerHost: 'N/A',
         severity: 'error',
         details: { duration, success: false, error: error.message },
-        metadata: { taskId: name }
+        metadata: { taskId: name },
       });
 
       throw error;
@@ -179,12 +173,9 @@ class TaskScheduler {
 
         // Trigger self-healing for violations
         if (this.config.governance.auto_heal) {
-          const router = routers.find(r => r.name === result.router);
+          const router = routers.find((r) => r.name === result.router);
           if (router) {
-            const healingResults = await this.selfHealing.checkAndHeal(
-              router,
-              result.violations
-            );
+            const healingResults = await this.selfHealing.checkAndHeal(router, result.violations);
             logger.info(`Self-healing results for ${result.router}:`, healingResults);
           }
         }
@@ -194,15 +185,15 @@ class TaskScheduler {
     // Generate compliance report
     const complianceReport = await this.auditReporter.generateComplianceReport(
       routers,
-      policyResults
+      policyResults,
     );
 
     return {
       routersChecked: routers.length,
-      compliantRouters: policyResults.filter(r => r.compliance).length,
-      nonCompliantRouters: policyResults.filter(r => !r.compliance).length,
+      compliantRouters: policyResults.filter((r) => r.compliance).length,
+      nonCompliantRouters: policyResults.filter((r) => !r.compliance).length,
       totalViolations: policyResults.reduce((sum, r) => sum + r.violations.length, 0),
-      complianceReport
+      complianceReport,
     };
   }
 
@@ -221,14 +212,14 @@ class TaskScheduler {
           routerName: router.name,
           routerHost: router.host,
           severity: result.success ? 'info' : 'error',
-          details: result
+          details: result,
         });
       } catch (error) {
         logger.error(`Backup failed for ${router.name}: ${error.message}`);
         backupResults.push({
           success: false,
           router: router.name,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -238,9 +229,9 @@ class TaskScheduler {
 
     return {
       routersProcessed: routers.length,
-      successfulBackups: backupResults.filter(r => r.success).length,
-      failedBackups: backupResults.filter(r => !r.success).length,
-      backupResults
+      successfulBackups: backupResults.filter((r) => r.success).length,
+      failedBackups: backupResults.filter((r) => !r.success).length,
+      backupResults,
     };
   }
 
@@ -258,7 +249,7 @@ class TaskScheduler {
           currentVersion: firmwareInfo.currentVersion,
           latestVersion: firmwareInfo.latestVersion,
           updateAvailable: firmwareInfo.updateAvailable,
-          securityPatches: firmwareInfo.securityPatches
+          securityPatches: firmwareInfo.securityPatches,
         });
 
         await this.auditReporter.logEvent({
@@ -266,21 +257,21 @@ class TaskScheduler {
           routerName: router.name,
           routerHost: router.host,
           severity: firmwareInfo.updateAvailable ? 'warning' : 'info',
-          details: firmwareInfo
+          details: firmwareInfo,
         });
       } catch (error) {
         logger.error(`Firmware check failed for ${router.name}: ${error.message}`);
         firmwareResults.push({
           router: router.name,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
     return {
       routersChecked: routers.length,
-      updatesAvailable: firmwareResults.filter(r => r.updateAvailable).length,
-      firmwareResults
+      updatesAvailable: firmwareResults.filter((r) => r.updateAvailable).length,
+      firmwareResults,
     };
   }
 
@@ -314,7 +305,7 @@ class TaskScheduler {
         latestVersion,
         updateAvailable,
         securityPatches: [],
-        securityPatchesNote: 'no advisory feed configured - this list is not populated'
+        securityPatchesNote: 'no advisory feed configured - this list is not populated',
       };
     } catch (error) {
       logger.error(`Failed to check firmware for ${router.name}: ${error.message}`);
@@ -328,7 +319,7 @@ class TaskScheduler {
     const versions = {
       cisco: '17.9.4',
       juniper: '22.4R2',
-      arista: '4.29.1F'
+      arista: '4.29.1F',
     };
     return versions[routerType.toLowerCase()] || '1.0.0';
   }
@@ -338,26 +329,26 @@ class TaskScheduler {
 
     // Generate various audit reports
     const auditReport = await this.auditReporter.generateAuditReport('24h');
-    
+
     const configChanges = this.configManager.getConfigChanges();
     const backups = await this.configManager.listBackups();
     const configReport = await this.auditReporter.generateConfigurationReport(
       configChanges,
-      backups
+      backups,
     );
 
     const healingActions = this.selfHealing.getHealingActions();
     const healingMetrics = this.selfHealing.getMetrics();
     const healingReport = await this.auditReporter.generateSelfHealingReport(
       healingActions,
-      healingMetrics
+      healingMetrics,
     );
 
     return {
       auditReport,
       configReport,
       healingReport,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     };
   }
 
@@ -376,23 +367,23 @@ class TaskScheduler {
           routerName: router.name,
           routerHost: router.host,
           severity: result.compliant ? 'info' : 'warning',
-          details: result
+          details: result,
         });
       } catch (error) {
         logger.error(`Config compliance check failed for ${router.name}: ${error.message}`);
         complianceResults.push({
           router: router.name,
           compliant: false,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
     return {
       routersChecked: routers.length,
-      compliantRouters: complianceResults.filter(r => r.compliant).length,
-      nonCompliantRouters: complianceResults.filter(r => !r.compliant).length,
-      complianceResults
+      compliantRouters: complianceResults.filter((r) => r.compliant).length,
+      nonCompliantRouters: complianceResults.filter((r) => !r.compliant).length,
+      complianceResults,
     };
   }
 
@@ -408,14 +399,14 @@ class TaskScheduler {
       checks.push({
         name: 'syslog_enabled',
         compliant: syslogEnabled,
-        description: 'Syslog should be enabled for centralized logging'
+        description: 'Syslog should be enabled for centralized logging',
       });
     } catch (error) {
       checks.push({
         name: 'syslog_enabled',
         compliant: false,
         description: 'Failed to check syslog configuration',
-        error: error.message
+        error: error.message,
       });
     }
 
@@ -425,14 +416,14 @@ class TaskScheduler {
       checks.push({
         name: 'snmp_secure',
         compliant: snmpSecure,
-        description: 'SNMP community should not use default values'
+        description: 'SNMP community should not use default values',
       });
     } catch (error) {
       checks.push({
         name: 'snmp_secure',
         compliant: false,
         description: 'Failed to check SNMP security',
-        error: error.message
+        error: error.message,
       });
     }
 
@@ -443,27 +434,27 @@ class TaskScheduler {
         name: 'interface_status',
         compliant: interfaceStatus.allUp,
         description: 'All interfaces should be in UP state',
-        details: interfaceStatus
+        details: interfaceStatus,
       });
     } catch (error) {
       checks.push({
         name: 'interface_status',
         compliant: false,
         description: 'Failed to check interface status',
-        error: error.message
+        error: error.message,
       });
     }
 
-    const compliant = checks.every(c => c.compliant);
+    const compliant = checks.every((c) => c.compliant);
 
     return {
       router: router.name,
       host: router.host,
       compliant,
       totalChecks: checks.length,
-      passedChecks: checks.filter(c => c.compliant).length,
-      failedChecks: checks.filter(c => !c.compliant).length,
-      checks
+      passedChecks: checks.filter((c) => c.compliant).length,
+      failedChecks: checks.filter((c) => !c.compliant).length,
+      checks,
     };
   }
 
@@ -481,33 +472,33 @@ class TaskScheduler {
   async checkInterfaceStatus(snmp) {
     const interfaces = [];
     const ifNumberOid = '1.3.6.1.2.1.2.1.0';
-    
+
     try {
       const ifCount = await snmp.get(ifNumberOid);
-      
+
       for (let i = 1; i <= Math.min(parseInt(ifCount), 10); i++) {
         const ifOperStatusOid = `1.3.6.1.2.1.2.2.1.8.${i}`;
         const ifDescrOid = `1.3.6.1.2.1.2.2.1.2.${i}`;
-        
+
         const operStatus = await snmp.get(ifOperStatusOid);
         const descr = await snmp.get(ifDescrOid);
-        
+
         interfaces.push({
           index: i,
           description: descr,
           operStatus: parseInt(operStatus),
-          up: parseInt(operStatus) === 1
+          up: parseInt(operStatus) === 1,
         });
       }
 
-      const allUp = interfaces.length > 0 && interfaces.every(iface => iface.up);
-      
+      const allUp = interfaces.length > 0 && interfaces.every((iface) => iface.up);
+
       return {
         interfaces,
         totalInterfaces: interfaces.length,
-        upInterfaces: interfaces.filter(i => i.up).length,
-        downInterfaces: interfaces.filter(i => !i.up).length,
-        allUp
+        upInterfaces: interfaces.filter((i) => i.up).length,
+        downInterfaces: interfaces.filter((i) => !i.up).length,
+        allUp,
       };
     } catch (error) {
       throw new Error(`Failed to check interface status: ${error.message}`);
@@ -534,9 +525,9 @@ class TaskScheduler {
   }
 
   getScheduledTasks() {
-    return Array.from(this.scheduledTasks.values()).map(task => ({
+    return Array.from(this.scheduledTasks.values()).map((task) => ({
       name: task.name,
-      schedule: task.schedule
+      schedule: task.schedule,
     }));
   }
 
@@ -550,12 +541,12 @@ class TaskScheduler {
 
   stopAllTasks() {
     logger.info('Stopping all scheduled tasks');
-    
+
     for (const [name, taskInfo] of this.scheduledTasks) {
       taskInfo.task.stop();
       logger.info(`Stopped task: ${name}`);
     }
-    
+
     this.scheduledTasks.clear();
   }
 }

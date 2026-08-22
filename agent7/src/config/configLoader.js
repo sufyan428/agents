@@ -36,16 +36,19 @@ class ConfigLoader {
       return fromEnv !== undefined && fromEnv !== '' ? undefined : value;
     };
 
-    config.ai = resolveAiConfig({
-      provider: fromFile('AI_PROVIDER', fileAi.provider),
-      baseUrl: fromFile('AI_BASE_URL', fileAi.base_url),
-      model: fromFile('AI_MODEL', fileAi.model),
-      maxTokens: fromFile('AI_MAX_TOKENS', fileAi.max_tokens),
-      requestTimeoutMs: fileAi.request_timeout_ms,
-      dailyCallBudget: fromFile('AI_DAILY_CALL_BUDGET', fileAi.daily_call_budget),
-      dailyTokenBudget: fromFile('AI_DAILY_TOKEN_BUDGET', fileAi.daily_token_budget),
-      appName: 'agent7',
-    }, env);
+    config.ai = resolveAiConfig(
+      {
+        provider: fromFile('AI_PROVIDER', fileAi.provider),
+        baseUrl: fromFile('AI_BASE_URL', fileAi.base_url),
+        model: fromFile('AI_MODEL', fileAi.model),
+        maxTokens: fromFile('AI_MAX_TOKENS', fileAi.max_tokens),
+        requestTimeoutMs: fileAi.request_timeout_ms,
+        dailyCallBudget: fromFile('AI_DAILY_CALL_BUDGET', fileAi.daily_call_budget),
+        dailyTokenBudget: fromFile('AI_DAILY_TOKEN_BUDGET', fileAi.daily_token_budget),
+        appName: 'agent7',
+      },
+      env,
+    );
 
     return config;
   }

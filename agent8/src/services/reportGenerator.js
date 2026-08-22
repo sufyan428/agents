@@ -20,7 +20,10 @@ class ReportGenerator {
     this.llmClient = llmClient;
     this.dataCollector = dataCollector;
     this.history = [];
-    this.outputDir = path.resolve(path.join(__dirname, '..', '..'), config.reports.output_directory);
+    this.outputDir = path.resolve(
+      path.join(__dirname, '..', '..'),
+      config.reports.output_directory,
+    );
 
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
@@ -45,7 +48,7 @@ class ReportGenerator {
       timestamp: new Date().toISOString(),
       markdown: result.text,
       usage: result.usage,
-      sourceErrors: this.collectSourceErrors(data)
+      sourceErrors: this.collectSourceErrors(data),
     };
 
     this.saveToDisk(report);

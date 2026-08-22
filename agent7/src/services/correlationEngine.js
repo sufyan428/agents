@@ -93,7 +93,7 @@ class CorrelationEngine {
     if (intervalSeconds < 60) return `*/${intervalSeconds} * * * * *`;
     if (intervalSeconds % 60 === 0) return `0 */${intervalSeconds / 60} * * * *`;
     throw new Error(
-      `correlation.poll_interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`
+      `correlation.poll_interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`,
     );
   }
 
@@ -145,7 +145,11 @@ class CorrelationEngine {
       }
 
       const snapshot = await this.collector.collect();
-      const userContent = JSON.stringify({ incidents: worthNarrating, agentHealth: snapshot.agents }, null, 2);
+      const userContent = JSON.stringify(
+        { incidents: worthNarrating, agentHealth: snapshot.agents },
+        null,
+        2,
+      );
 
       this.metrics.llmCallsTotal++;
       this.metrics.lastLlmCallAt = new Date().toISOString();
@@ -201,21 +205,31 @@ class CorrelationEngine {
       this.collector.collect(),
     ]);
 
-    const userContent = JSON.stringify({
-      question,
-      incidents: incidents ?? [],
-      agents: snapshot.agents,
-      orchestratorReachable: snapshot.orchestratorReachable,
-    }, null, 2);
+    const userContent = JSON.stringify(
+      {
+        question,
+        incidents: incidents ?? [],
+        agents: snapshot.agents,
+        orchestratorReachable: snapshot.orchestratorReachable,
+      },
+      null,
+      2,
+    );
 
     this.metrics.llmCallsTotal++;
     this.metrics.lastLlmCallAt = new Date().toISOString();
     return this.llmClient.complete(QA_SYSTEM_PROMPT, userContent);
   }
 
-  getLatestSnapshot() { return this.history[this.history.length - 1] || null; }
-  getHistory() { return this.history; }
-  getLatestResult() { return this.latestResult; }
+  getLatestSnapshot() {
+    return this.history[this.history.length - 1] || null;
+  }
+  getHistory() {
+    return this.history;
+  }
+  getLatestResult() {
+    return this.latestResult;
+  }
   getMetrics() {
     return { ...this.metrics, ...(this.llmClient?.stats ? { ai: this.llmClient.stats() } : {}) };
   }

@@ -16,7 +16,7 @@ const modules = [
   '../src/modules/configManager',
   '../src/modules/policyChecker',
   '../src/modules/selfHealing',
-  '../src/modules/taskScheduler'
+  '../src/modules/taskScheduler',
 ];
 
 for (const modPath of modules) {

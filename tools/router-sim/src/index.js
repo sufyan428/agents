@@ -53,7 +53,9 @@ const config = {
   community: args.community || process.env.SIM_COMMUNITY || 'public',
   syslogHost: args['syslog-host'] || process.env.SIM_SYSLOG_HOST || '127.0.0.1',
   syslogPorts: (args['syslog-ports'] || process.env.SIM_SYSLOG_PORTS || '5140,5142,5143,5144')
-    .split(',').map((p) => Number(p.trim())).filter(Boolean),
+    .split(',')
+    .map((p) => Number(p.trim()))
+    .filter(Boolean),
   // Loopback by default, like everything else in this project. The simulator
   // has no authentication at all, so exposing it is a deliberate act.
   bindHost: args['bind-host'] || process.env.BIND_HOST || '127.0.0.1',
@@ -61,11 +63,16 @@ const config = {
 
 const device = new Device({ name: args.name || 'sim-router-1' });
 const syslog = new SyslogEmitter({
-  host: config.syslogHost, ports: config.syslogPorts, hostname: device.name, logger: log,
+  host: config.syslogHost,
+  ports: config.syslogPorts,
+  hostname: device.name,
+  logger: log,
 });
 const faults = new FaultEngine(device, { logger: log, syslog });
 const snmpAgent = new SnmpAgent(device, {
-  port: config.snmpPort, community: config.community, logger: log,
+  port: config.snmpPort,
+  community: config.community,
+  logger: log,
 });
 
 // ---------------------------------------------------------------- control API
@@ -79,10 +86,17 @@ function json(res, code, body) {
 function readBody(req) {
   return new Promise((resolve) => {
     let raw = '';
-    req.on('data', (c) => { raw += c; if (raw.length > 64 * 1024) req.destroy(); });
+    req.on('data', (c) => {
+      raw += c;
+      if (raw.length > 64 * 1024) req.destroy();
+    });
     req.on('end', () => {
       if (!raw.trim()) return resolve({});
-      try { resolve(JSON.parse(raw)); } catch { resolve({}); }
+      try {
+        resolve(JSON.parse(raw));
+      } catch {
+        resolve({});
+      }
     });
   });
 }

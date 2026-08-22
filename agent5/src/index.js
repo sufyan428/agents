@@ -52,11 +52,7 @@ class AutomationGovernanceAgent {
       await this.policyChecker.loadPolicies();
 
       this.configManager = new ConfigManager(this.config);
-      this.selfHealing = new SelfHealing(
-        this.config,
-        this.policyChecker,
-        this.configManager
-      );
+      this.selfHealing = new SelfHealing(this.config, this.policyChecker, this.configManager);
       this.auditReporter = new AuditReporter(this.config);
 
       // Initialize task scheduler
@@ -65,7 +61,7 @@ class AutomationGovernanceAgent {
         this.policyChecker,
         this.configManager,
         this.selfHealing,
-        this.auditReporter
+        this.auditReporter,
       );
 
       // Start syslog listener
@@ -93,8 +89,8 @@ class AutomationGovernanceAgent {
         details: {
           routers: this.routers.length,
           policies: this.policyChecker.policies.length,
-          scheduledTasks: this.taskScheduler.getScheduledTasks().length
-        }
+          scheduledTasks: this.taskScheduler.getScheduledTasks().length,
+        },
       });
 
       logger.info('Automation & Governance Agent initialized successfully');
@@ -113,7 +109,9 @@ class AutomationGovernanceAgent {
       try {
         res.set('Content-Type', 'text/plain');
         res.send(await this.metrics.getMetrics());
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     });
 
     // API endpoints
@@ -124,7 +122,7 @@ class AutomationGovernanceAgent {
       logger.error(`Unhandled error: ${err.message}`);
       res.status(500).json({
         error: 'Internal server error',
-        message: err.message
+        message: err.message,
       });
     });
   }
@@ -138,32 +136,32 @@ class AutomationGovernanceAgent {
         status: 'running',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        routers: this.routers.map(r => ({
+        routers: this.routers.map((r) => ({
           name: r.name,
           host: r.host,
-          location: r.location
+          location: r.location,
         })),
         policies: this.policyChecker.policies.length,
-        scheduledTasks: this.taskScheduler.getScheduledTasks()
+        scheduledTasks: this.taskScheduler.getScheduledTasks(),
       });
     });
 
     // Router status
     api.get('/routers', (req, res) => {
       res.json({
-        routers: this.routers.map(r => ({
+        routers: this.routers.map((r) => ({
           name: r.name,
           host: r.host,
           location: r.location,
-          type: r.type
-        }))
+          type: r.type,
+        })),
       });
     });
 
     // Policies endpoint
     api.get('/policies', (req, res) => {
       res.json({
-        policies: this.policyChecker.policies
+        policies: this.policyChecker.policies,
       });
     });
 
@@ -173,7 +171,7 @@ class AutomationGovernanceAgent {
         const results = await this.policyChecker.checkAllRouters(this.routers);
         res.json({
           timestamp: new Date().toISOString(),
-          results
+          results,
         });
       } catch (error) {
         logger.error(`Compliance check failed: ${error.message}`);
@@ -185,19 +183,19 @@ class AutomationGovernanceAgent {
     api.post('/healing/trigger', async (req, res) => {
       try {
         const { router, violations } = req.body;
-        
+
         if (!router) {
           return res.status(400).json({ error: 'Router name is required' });
         }
 
-        const routerObj = this.routers.find(r => r.name === router);
+        const routerObj = this.routers.find((r) => r.name === router);
         if (!routerObj) {
           return res.status(404).json({ error: 'Router not found' });
         }
 
         const violationsToHeal = violations || [];
         const results = await this.selfHealing.checkAndHeal(routerObj, violationsToHeal);
-        
+
         res.json(results);
       } catch (error) {
         logger.error(`Self-healing trigger failed: ${error.message}`);
@@ -209,10 +207,10 @@ class AutomationGovernanceAgent {
     api.post('/config/backup', async (req, res) => {
       try {
         const { router } = req.body;
-        
+
         let routersToBackup = this.routers;
         if (router) {
-          const routerObj = this.routers.find(r => r.name === router);
+          const routerObj = this.routers.find((r) => r.name === router);
           if (!routerObj) {
             return res.status(404).json({ error: 'Router not found' });
           }
@@ -227,7 +225,7 @@ class AutomationGovernanceAgent {
 
         res.json({
           timestamp: new Date().toISOString(),
-          results
+          results,
         });
       } catch (error) {
         logger.error(`Backup failed: ${error.message}`);
@@ -251,12 +249,12 @@ class AutomationGovernanceAgent {
     api.post('/config/restore', async (req, res) => {
       try {
         const { router, backupFile } = req.body;
-        
+
         if (!router || !backupFile) {
           return res.status(400).json({ error: 'Router and backupFile are required' });
         }
 
-        const routerObj = this.routers.find(r => r.name === router);
+        const routerObj = this.routers.find((r) => r.name === router);
         if (!routerObj) {
           return res.status(404).json({ error: 'Router not found' });
         }
@@ -273,7 +271,7 @@ class AutomationGovernanceAgent {
     api.post('/reports/generate', async (req, res) => {
       try {
         const { reportType } = req.body;
-        
+
         let report;
         switch (reportType) {
           case 'compliance': {
@@ -293,7 +291,10 @@ class AutomationGovernanceAgent {
           case 'self_healing': {
             const healingActions = this.selfHealing.getHealingActions();
             const healingMetrics = this.selfHealing.getMetrics();
-            report = await this.auditReporter.generateSelfHealingReport(healingActions, healingMetrics);
+            report = await this.auditReporter.generateSelfHealingReport(
+              healingActions,
+              healingMetrics,
+            );
             break;
           }
           default:
@@ -311,7 +312,7 @@ class AutomationGovernanceAgent {
     api.post('/tasks/execute', async (req, res) => {
       try {
         const { taskName } = req.body;
-        
+
         if (!taskName) {
           return res.status(400).json({ error: 'Task name is required' });
         }
@@ -339,16 +340,16 @@ class AutomationGovernanceAgent {
 
       const { limit, search, severity, source } = req.query;
       const filter = {};
-      
+
       if (severity) filter.severity = parseInt(severity);
       if (source) filter.source = source;
       if (search) filter.search = search;
 
       const messages = this.syslogListener.getMessages(
         Object.keys(filter).length > 0 ? filter : null,
-        parseInt(limit) || 100
+        parseInt(limit) || 100,
       );
-      
+
       res.json({ messages });
     });
 
@@ -369,7 +370,7 @@ class AutomationGovernanceAgent {
         configManager: this.configManager.getMetrics(),
         selfHealing: this.selfHealing.getMetrics(),
         auditReporter: this.auditReporter.getMetrics(),
-        taskScheduler: this.taskScheduler.getMetrics()
+        taskScheduler: this.taskScheduler.getMetrics(),
       });
     });
 
@@ -386,8 +387,8 @@ class AutomationGovernanceAgent {
     if (!token) {
       logger.warn(
         'AGENT_API_TOKEN is not set. Mutating /api routes will refuse with 503. ' +
-        'This agent can write configuration to network devices, so they do not ' +
-        'run unauthenticated.'
+          'This agent can write configuration to network devices, so they do not ' +
+          'run unauthenticated.',
       );
     }
 
@@ -399,7 +400,10 @@ class AutomationGovernanceAgent {
       healthPath: serverConfig.health_path || '/health',
       metricsPath: serverConfig.metrics_path || '/metrics',
       authToken: token,
-      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
       healthChecks: () => {
         const cfg = this.configLoader.getConfig?.() || {};
         const heal = cfg.self_healing || {};
@@ -408,13 +412,13 @@ class AutomationGovernanceAgent {
             name: 'routers_configured',
             status: this.routers.length > 0 ? 'healthy' : 'degraded',
             message: this.routers.length > 0 ? undefined : 'no routers configured',
-            simulated: false
+            simulated: false,
           },
           {
             name: 'self_healing',
             status: 'healthy',
             message: heal.dry_run === false ? 'ARMED - will write to devices' : 'dry run',
-            simulated: false
+            simulated: false,
           },
           {
             // Several policy checks return a placeholder verdict rather than
@@ -422,12 +426,13 @@ class AutomationGovernanceAgent {
             // never mistaken for a verified one.
             name: 'policy_checks',
             status: 'degraded',
-            message: 'syslog and configuration policy checks are not yet implemented against real devices',
-            simulated: true
+            message:
+              'syslog and configuration policy checks are not yet implemented against real devices',
+            simulated: true,
           },
-          simulationHealthCheck('agent5')
+          simulationHealthCheck('agent5'),
         ];
-      }
+      },
     });
 
     this.app = this.agentServer.app;
@@ -466,7 +471,8 @@ class AutomationGovernanceAgent {
 
 // Start the agent
 const agent = new AutomationGovernanceAgent();
-agent.initialize()
+agent
+  .initialize()
   .then(() => agent.start())
   .catch((error) => {
     logger.error(`Failed to start agent: ${error.message}`);

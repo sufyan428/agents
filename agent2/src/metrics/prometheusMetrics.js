@@ -4,11 +4,11 @@ class PrometheusMetrics {
   constructor(config) {
     this.config = config;
     this.register = new promClient.Registry();
-    
+
     // Default metrics (Node.js process metrics)
-    promClient.collectDefaultMetrics({ 
+    promClient.collectDefaultMetrics({
       register: this.register,
-      prefix: 'resilience_agent_'
+      prefix: 'resilience_agent_',
     });
 
     this.initializeMetrics();
@@ -19,13 +19,13 @@ class PrometheusMetrics {
     this.routerPrimaryUp = new promClient.Gauge({
       name: 'router_primary_up',
       help: 'Whether the primary router is up (1 = up, 0 = down)',
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.routerBackupUp = new promClient.Gauge({
       name: 'router_backup_up',
       help: 'Whether the backup router is up (1 = up, 0 = down)',
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Router response time
@@ -33,7 +33,7 @@ class PrometheusMetrics {
       name: 'router_response_time_seconds',
       help: 'Router response time in seconds',
       labelNames: ['router', 'method'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Router uptime
@@ -41,7 +41,7 @@ class PrometheusMetrics {
       name: 'router_uptime_seconds',
       help: 'Router uptime in seconds',
       labelNames: ['router'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Failover events
@@ -49,14 +49,14 @@ class PrometheusMetrics {
       name: 'failover_events_total',
       help: 'Total number of failover events',
       labelNames: ['type', 'reason'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.failbackEvents = new promClient.Counter({
       name: 'failback_events_total',
       help: 'Total number of failback events',
       labelNames: ['reason'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Heartbeat metrics
@@ -64,34 +64,34 @@ class PrometheusMetrics {
       name: 'missed_heartbeats_total',
       help: 'Total number of missed heartbeats',
       labelNames: ['router'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.heartbeatSuccess = new promClient.Counter({
       name: 'heartbeat_success_total',
       help: 'Total number of successful heartbeats',
       labelNames: ['router', 'method'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Configuration sync metrics
     this.configSyncStatus = new promClient.Gauge({
       name: 'config_sync_status',
       help: 'Configuration synchronization status (1 = synced, 0 = out of sync)',
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.configSyncErrors = new promClient.Counter({
       name: 'config_sync_errors_total',
       help: 'Total number of configuration sync errors',
       labelNames: ['type'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.configSyncLastSuccess = new promClient.Gauge({
       name: 'config_sync_last_success_timestamp',
       help: 'Timestamp of last successful configuration sync',
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Active router indicator
@@ -99,14 +99,14 @@ class PrometheusMetrics {
       name: 'active_router',
       help: 'Currently active router (1 = primary, 2 = backup)',
       labelNames: ['host', 'type'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Agent health
     this.agentHealth = new promClient.Gauge({
       name: 'agent_health',
       help: 'Agent health status (1 = healthy, 0 = unhealthy)',
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // SNMP query metrics
@@ -115,14 +115,14 @@ class PrometheusMetrics {
       help: 'SNMP query duration in seconds',
       labelNames: ['router', 'oid'],
       buckets: [0.1, 0.5, 1, 2, 5, 10],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.snmpQueryErrors = new promClient.Counter({
       name: 'snmp_query_errors_total',
       help: 'Total number of SNMP query errors',
       labelNames: ['router', 'error_type'],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     // Ping metrics
@@ -131,14 +131,14 @@ class PrometheusMetrics {
       help: 'Ping duration in seconds',
       labelNames: ['router'],
       buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
-      registers: [this.register]
+      registers: [this.register],
     });
 
     this.pingPacketsLost = new promClient.Counter({
       name: 'ping_packets_lost_total',
       help: 'Total number of lost ping packets',
       labelNames: ['router'],
-      registers: [this.register]
+      registers: [this.register],
     });
   }
 

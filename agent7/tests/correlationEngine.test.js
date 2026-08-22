@@ -4,9 +4,14 @@ const CorrelationEngine = require('../src/services/correlationEngine');
 
 function makeEngine() {
   const config = {
-    correlation: { poll_interval_seconds: 60, history_size: 30, anomaly_only: true, baseline_every_n_polls: 30 },
+    correlation: {
+      poll_interval_seconds: 60,
+      history_size: 30,
+      anomaly_only: true,
+      baseline_every_n_polls: 30,
+    },
     agents: [],
-    orchestrator: { base_url: 'http://localhost:8080', timeout_ms: 1000 }
+    orchestrator: { base_url: 'http://localhost:8080', timeout_ms: 1000 },
   };
   return new CorrelationEngine(config, null);
 }

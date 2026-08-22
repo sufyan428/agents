@@ -64,14 +64,14 @@ class SNMPCollector {
 
   initialize() {
     const routers = config.getEnabledRouters();
-    routers.forEach(router => {
+    routers.forEach((router) => {
       try {
         const session = new snmp.Session({
           host: router.ip,
           community: router.community || 'public',
           port: router.port || 161,
           version: this.getVersion(router.version),
-          timeout: 5000
+          timeout: 5000,
         });
         this.sessions.set(router.name, { session, router });
         logger.info(`SNMP session created for ${router.name} (${router.ip}:${router.port})`);
@@ -106,7 +106,7 @@ class SNMPCollector {
 
     const { session, router } = sessionData;
     const routerOids = { ...this.defaultOids, ...(router.metrics || {}) };
-    
+
     const metrics = {
       router: router.name,
       ip: router.ip,
@@ -114,7 +114,7 @@ class SNMPCollector {
       cpu: null,
       memory: null,
       uptime: null,
-      interfaces: []
+      interfaces: [],
     };
 
     try {
@@ -133,9 +133,10 @@ class SNMPCollector {
       const free = routerOids.memory_free
         ? await this.getSingleValue(session, routerOids.memory_free, routerName)
         : null;
-      const total = used !== null && free !== null
-        ? Number(used) + Number(free)
-        : await this.getSingleValue(session, routerOids.memory_total, routerName);
+      const total =
+        used !== null && free !== null
+          ? Number(used) + Number(free)
+          : await this.getSingleValue(session, routerOids.memory_total, routerName);
 
       if (used !== null && total) {
         metrics.memory = ((Number(used) / Number(total)) * 100).toFixed(2);
@@ -147,9 +148,15 @@ class SNMPCollector {
       // Interfaces
       const interfaceStats = await this.collectInterfaceStats(session, router, routerOids);
       metrics.interfaces = interfaceStats;
-      
-      interfaceStats.forEach(iface => {
-        prometheus.setBandwidth(router.name, router.ip, iface.name, iface.inOctets, iface.outOctets);
+
+      interfaceStats.forEach((iface) => {
+        prometheus.setBandwidth(
+          router.name,
+          router.ip,
+          iface.name,
+          iface.inOctets,
+          iface.outOctets,
+        );
       });
 
       logger.info(`SNMP metrics collected successfully from ${router.name}`);
@@ -166,12 +173,12 @@ class SNMPCollector {
       // Walk the Interface Description tree
       const ifDescOid = '1.3.6.1.2.1.2.2.1.2';
       const ifItems = await this.getSubtree(session, ifDescOid, router.name);
-      
+
       // Without these base OIDs there is nothing to ask for; querying anyway
       // is what produced the "undefined.1" requests.
       if (!routerOids.interface_in || !routerOids.interface_out) {
         logger.warn(
-          `No interface_in/interface_out OIDs configured for ${router.name} - skipping interface stats`
+          `No interface_in/interface_out OIDs configured for ${router.name} - skipping interface stats`,
         );
         return interfaces;
       }
@@ -180,10 +187,22 @@ class SNMPCollector {
         const index = item.index;
         const name = item.value;
 
-        const inOctets = await this.getSingleValue(session, `${routerOids.interface_in}.${index}`, router.name);
-        const outOctets = await this.getSingleValue(session, `${routerOids.interface_out}.${index}`, router.name);
+        const inOctets = await this.getSingleValue(
+          session,
+          `${routerOids.interface_in}.${index}`,
+          router.name,
+        );
+        const outOctets = await this.getSingleValue(
+          session,
+          `${routerOids.interface_out}.${index}`,
+          router.name,
+        );
         const errors = routerOids.interface_errors
-          ? await this.getSingleValue(session, `${routerOids.interface_errors}.${index}`, router.name)
+          ? await this.getSingleValue(
+              session,
+              `${routerOids.interface_errors}.${index}`,
+              router.name,
+            )
           : null;
 
         interfaces.push({
@@ -191,7 +210,7 @@ class SNMPCollector {
           name: name || `if${index}`,
           inOctets: inOctets || 0,
           outOctets: outOctets || 0,
-          errors: errors || 0
+          errors: errors || 0,
         });
       }
     } catch (error) {
@@ -209,7 +228,7 @@ class SNMPCollector {
           return resolve([]);
         }
 
-        const results = varbinds.map(vb => {
+        const results = varbinds.map((vb) => {
           const currentOidStr = Array.isArray(vb.oid) ? vb.oid.join('.') : vb.oid;
           const index = currentOidStr.split('.').pop(); // Get last digit as index
           return { index, value: vb.value };
@@ -228,7 +247,7 @@ class SNMPCollector {
   }
 
   close() {
-    this.sessions.forEach(s => s.session.close());
+    this.sessions.forEach((s) => s.session.close());
     this.sessions.clear();
   }
 }

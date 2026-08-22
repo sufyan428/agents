@@ -3,7 +3,7 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent4.snmpFallback',
   'Invents CPU, memory and interface counters when the device is unreachable.',
-  'a reachable SNMP agent - or removing the fallback so unreachable reports as unreachable'
+  'a reachable SNMP agent - or removing the fallback so unreachable reports as unreachable',
 );
 
 const snmp = require('net-snmp');
@@ -13,32 +13,28 @@ class SnmpMonitor {
     this.config = config;
     this.logger = logger;
     this.session = null;
-    
+
     // SNMP OIDs for common router metrics
     this.oids = {
-      cpuUsage: '1.3.6.1.4.1.9.2.1.56.0',     // Cisco CPU usage
-      memoryUsage: '1.3.6.1.4.1.9.2.1.8.0',    // Cisco memory usage
+      cpuUsage: '1.3.6.1.4.1.9.2.1.56.0', // Cisco CPU usage
+      memoryUsage: '1.3.6.1.4.1.9.2.1.8.0', // Cisco memory usage
       interfaceInOctets: '1.3.6.1.2.1.2.2.1.10', // Interface input octets
       interfaceOutOctets: '1.3.6.1.2.1.2.2.1.16', // Interface output octets
-      interfaceStatus: '1.3.6.1.2.1.2.2.1.8',  // Interface operational status
-      interfaceName: '1.3.6.1.2.1.2.2.1.2',    // Interface name
-      sysDescr: '1.3.6.1.2.1.1.1.0',           // System description
-      sysUpTime: '1.3.6.1.2.1.1.3.0',           // System uptime
-      sysName: '1.3.6.1.2.1.1.5.0'              // System name
+      interfaceStatus: '1.3.6.1.2.1.2.2.1.8', // Interface operational status
+      interfaceName: '1.3.6.1.2.1.2.2.1.2', // Interface name
+      sysDescr: '1.3.6.1.2.1.1.1.0', // System description
+      sysUpTime: '1.3.6.1.2.1.1.3.0', // System uptime
+      sysName: '1.3.6.1.2.1.1.5.0', // System name
     };
   }
 
   createSession() {
-    return snmp.createSession(
-      this.config.router.host,
-      this.config.router.snmp.community,
-      {
-        port: this.config.router.snmp.port,
-        version: snmp.Version2c,
-        timeout: this.config.router.snmp.timeout,
-        retries: this.config.router.snmp.retries
-      }
-    );
+    return snmp.createSession(this.config.router.host, this.config.router.snmp.community, {
+      port: this.config.router.snmp.port,
+      version: snmp.Version2c,
+      timeout: this.config.router.snmp.timeout,
+      retries: this.config.router.snmp.retries,
+    });
   }
 
   async collectMetrics() {
@@ -48,18 +44,14 @@ class SnmpMonitor {
       interfaces: [],
       sysUpTime: 0,
       sysName: '',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     try {
       const session = this.createSession();
 
       // Get basic system info
-      const systemVars = [
-        this.oids.sysDescr,
-        this.oids.sysUpTime,
-        this.oids.sysName
-      ];
+      const systemVars = [this.oids.sysDescr, this.oids.sysUpTime, this.oids.sysName];
 
       await new Promise((resolve, reject) => {
         session.get(systemVars, (error, varbinds) => {
@@ -69,7 +61,7 @@ class SnmpMonitor {
             return;
           }
 
-          varbinds.forEach(varbind => {
+          varbinds.forEach((varbind) => {
             if (snmp.isVarbindError(varbind)) {
               this.logger.error(`SNMP varbind error: ${snmp.varbindError(varbind)}`);
             } else {
@@ -88,7 +80,7 @@ class SnmpMonitor {
       // Get CPU and memory metrics
       try {
         const resourceVars = [this.oids.cpuUsage, this.oids.memoryUsage];
-        
+
         await new Promise((resolve, _reject) => {
           session.get(resourceVars, (error, varbinds) => {
             if (error) {
@@ -97,7 +89,7 @@ class SnmpMonitor {
               return;
             }
 
-            varbinds.forEach(varbind => {
+            varbinds.forEach((varbind) => {
               if (!snmp.isVarbindError(varbind)) {
                 if (varbind.oid === this.oids.cpuUsage) {
                   metrics.cpuUsage = varbind.value;
@@ -141,21 +133,25 @@ class SnmpMonitor {
           );
         });
 
-        const interfaces = await Promise.all(rows.map(async (varbind) => {
-          const interfaceIndex = String(varbind.oid).split('.').pop();
-          const interfaceName = varbind.value.toString();
-          try {
-            const [inOctets, outOctets, status] = await Promise.all([
-              this.getInterfaceMetric(session, this.oids.interfaceInOctets, interfaceIndex),
-              this.getInterfaceMetric(session, this.oids.interfaceOutOctets, interfaceIndex),
-              this.getInterfaceMetric(session, this.oids.interfaceStatus, interfaceIndex)
-            ]);
-            return { index: interfaceIndex, name: interfaceName, inOctets, outOctets, status };
-          } catch (error) {
-            this.logger.error(`Error getting interface ${interfaceName} metrics: ${error.message}`);
-            return null;
-          }
-        }));
+        const interfaces = await Promise.all(
+          rows.map(async (varbind) => {
+            const interfaceIndex = String(varbind.oid).split('.').pop();
+            const interfaceName = varbind.value.toString();
+            try {
+              const [inOctets, outOctets, status] = await Promise.all([
+                this.getInterfaceMetric(session, this.oids.interfaceInOctets, interfaceIndex),
+                this.getInterfaceMetric(session, this.oids.interfaceOutOctets, interfaceIndex),
+                this.getInterfaceMetric(session, this.oids.interfaceStatus, interfaceIndex),
+              ]);
+              return { index: interfaceIndex, name: interfaceName, inOctets, outOctets, status };
+            } catch (error) {
+              this.logger.error(
+                `Error getting interface ${interfaceName} metrics: ${error.message}`,
+              );
+              return null;
+            }
+          }),
+        );
 
         metrics.interfaces = interfaces.filter((i) => i !== null);
       } catch (error) {
@@ -166,9 +162,10 @@ class SnmpMonitor {
       // requests in flight is what surfaced the doneCb crash.
       session.close();
 
-      this.logger.info(`SNMP metrics collected: CPU ${metrics.cpuUsage}%, Memory ${metrics.memoryUsage}%, ` +
-                      `${metrics.interfaces.length} interfaces`);
-
+      this.logger.info(
+        `SNMP metrics collected: CPU ${metrics.cpuUsage}%, Memory ${metrics.memoryUsage}%, ` +
+          `${metrics.interfaces.length} interfaces`,
+      );
     } catch (error) {
       this.logger.error(`SNMP collection error: ${error.message}`);
       // Return simulated data for testing when no router is available
@@ -211,7 +208,7 @@ class SnmpMonitor {
     markSimulated('agent4.snmpFallback', this.logger);
     baseMetrics.simulated = true;
     baseMetrics.measured = false;
-    
+
     baseMetrics.cpuUsage = Math.floor(Math.random() * 30) + 40; // 40-70%
     baseMetrics.memoryUsage = Math.floor(Math.random() * 25) + 55; // 55-80%
     baseMetrics.interfaces = [
@@ -220,15 +217,15 @@ class SnmpMonitor {
         name: 'GigabitEthernet0/0',
         inOctets: Math.floor(Math.random() * 1000000) + 500000,
         outOctets: Math.floor(Math.random() * 1000000) + 500000,
-        status: 1
+        status: 1,
       },
       {
         index: '2',
         name: 'GigabitEthernet0/1',
         inOctets: Math.floor(Math.random() * 1000000) + 500000,
         outOctets: Math.floor(Math.random() * 1000000) + 500000,
-        status: 1
-      }
+        status: 1,
+      },
     ];
 
     return baseMetrics;

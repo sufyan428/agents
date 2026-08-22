@@ -32,11 +32,7 @@ class SyslogListener {
           resolve();
         });
 
-        this.server.bind(
-          this.config.syslog.port,
-          this.config.syslog.bind_host
-        );
-
+        this.server.bind(this.config.syslog.port, this.config.syslog.bind_host);
       } catch (error) {
         reject(error);
       }
@@ -65,7 +61,6 @@ class SyslogListener {
       }
 
       this.logger.debug(`Received syslog from ${rinfo.address}: ${message}`);
-
     } catch (error) {
       this.logger.error(`Error handling syslog message: ${error.message}`);
     }
@@ -82,13 +77,13 @@ class SyslogListener {
       priority: 0,
       facility: 0,
       severity: 0,
-      message: ''
+      message: '',
     };
 
     // Try to parse RFC3164 format (BSD syslog)
     if (parts.length >= 3) {
       const priorityMatch = message.match(/^<(\d+)>/);
-      
+
       if (priorityMatch) {
         parsed.priority = parseInt(priorityMatch[1]);
         parsed.facility = Math.floor(parsed.priority / 8);
@@ -115,9 +110,9 @@ class SyslogListener {
     const highImpact = ['congestion', 'dropped', 'timeout', 'exceeded', 'overload', 'critical'];
     const mediumImpact = ['warning', 'high', 'slow', 'delay', 'degraded'];
 
-    if (highImpact.some(keyword => message.includes(keyword))) {
+    if (highImpact.some((keyword) => message.includes(keyword))) {
       return 'high';
-    } else if (mediumImpact.some(keyword => message.includes(keyword))) {
+    } else if (mediumImpact.some((keyword) => message.includes(keyword))) {
       return 'medium';
     } else {
       return 'low';
@@ -137,12 +132,10 @@ class SyslogListener {
       'queue full',
       'packet loss',
       'interface down',
-      'link failure'
+      'link failure',
     ];
 
-    return criticalKeywords.some(keyword => 
-      parsed.message.toLowerCase().includes(keyword)
-    );
+    return criticalKeywords.some((keyword) => parsed.message.toLowerCase().includes(keyword));
   }
 
   stop() {
@@ -166,7 +159,7 @@ class SyslogListener {
 
   getCriticalEvents(limit = 50) {
     return this.messageBuffer
-      .filter(m => m.performanceImpact === 'high' || m.severity <= 2)
+      .filter((m) => m.performanceImpact === 'high' || m.severity <= 2)
       .slice(-limit);
   }
 

@@ -3,7 +3,12 @@
  * Orchestrates collectors, processors, and alerts
  */
 
-const { createServer, simulationHealthCheck, FindingStore, mountFindingsRoute } = require('@ragent/agent-common');
+const {
+  createServer,
+  simulationHealthCheck,
+  FindingStore,
+  mountFindingsRoute,
+} = require('@ragent/agent-common');
 const BaselineProcessor = require('./processors/baselineProcessor');
 const logger = require('./utils/logger');
 const config = require('./utils/config');
@@ -44,7 +49,7 @@ class MonitoringAgent {
       // configured thresholds.
       this.baselineProcessor = new BaselineProcessor({
         findingStore: this.findings,
-        thresholds: config.thresholds
+        thresholds: config.thresholds,
       });
 
       // Initialize collectors
@@ -73,7 +78,9 @@ class MonitoringAgent {
       try {
         res.set('Content-Type', prometheus.register.contentType);
         res.send(await prometheus.getMetrics());
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     });
 
     // Status endpoint
@@ -86,13 +93,13 @@ class MonitoringAgent {
         uptime: process.uptime(),
         collectors: {
           snmp: 'active',
-          syslog: syslogCollector.server ? 'active' : 'disabled'
+          syslog: syslogCollector.server ? 'active' : 'disabled',
         },
         alertStats: alertManager.getAlertStats(),
         activeConditions: alertManager.getActiveConditions(),
         findings: this.findings.summary(),
         baselines: this.baselineProcessor ? this.baselineProcessor.describe() : null,
-        thresholds: thresholdProcessor.getThresholds()
+        thresholds: thresholdProcessor.getThresholds(),
       });
     });
 
@@ -120,7 +127,7 @@ class MonitoringAgent {
         threshold: 80,
         timestamp: new Date().toISOString(),
         message: 'Test alert sent manually',
-        details: 'This is a test alert for monitoring purposes'
+        details: 'This is a test alert for monitoring purposes',
       };
 
       alertManager.sendAlert(testAlert);
@@ -135,15 +142,15 @@ class MonitoringAgent {
    */
   startMonitoring() {
     const routers = config.getEnabledRouters();
-    
-    routers.forEach(router => {
+
+    routers.forEach((router) => {
       const interval = (router.poll_interval || 30) * 1000;
-      
+
       const intervalId = setInterval(async () => {
         try {
           // Collect SNMP metrics
           const metrics = await snmpCollector.collect(router.name);
-          
+
           if (metrics) {
             // Configured thresholds still drive alert delivery.
             thresholdProcessor.processSNMPMetrics(metrics);
@@ -153,15 +160,24 @@ class MonitoringAgent {
             // normal that never crosses a configured line.
             const at = new Date();
             if (metrics.cpu !== null && metrics.cpu !== undefined) {
-              this.baselineProcessor.process(router.name, 'cpu', Number(metrics.cpu), { unit: '%', at });
+              this.baselineProcessor.process(router.name, 'cpu', Number(metrics.cpu), {
+                unit: '%',
+                at,
+              });
             }
             if (metrics.memory !== null && metrics.memory !== undefined) {
-              this.baselineProcessor.process(router.name, 'memory', Number(metrics.memory), { unit: '%', at });
+              this.baselineProcessor.process(router.name, 'memory', Number(metrics.memory), {
+                unit: '%',
+                at,
+              });
             }
             for (const iface of metrics.interfaces || []) {
               if (Number.isFinite(Number(iface.errors))) {
                 this.baselineProcessor.process(
-                  `${router.name}/${iface.name}`, 'interface_errors', Number(iface.errors), { at }
+                  `${router.name}/${iface.name}`,
+                  'interface_errors',
+                  Number(iface.errors),
+                  { at },
                 );
               }
             }
@@ -172,14 +188,13 @@ class MonitoringAgent {
           if (loginStats.lastMinute > 0) {
             thresholdProcessor.processFailedLogins(router.name, loginStats.lastMinute);
           }
-
         } catch (error) {
           logger.error(`Error monitoring ${router.name}: ${error.message}`);
         }
       }, interval);
 
       this.pollIntervals.set(router.name, intervalId);
-      
+
       logger.info(`Started monitoring ${router.name} (interval: ${router.poll_interval}s)`);
     });
 
@@ -193,13 +208,15 @@ class MonitoringAgent {
     // ended, which is half a monitoring system.
     const { alertManager } = require('./alerts');
     this.resolveInterval = setInterval(() => {
-      alertManager.sweepResolved().catch((err) =>
-        logger.error(`Resolution sweep failed: ${err.message}`)
-      );
+      alertManager
+        .sweepResolved()
+        .catch((err) => logger.error(`Resolution sweep failed: ${err.message}`));
       // Findings that stopped recurring are resolved too, so agent6 sees an
       // incident end rather than only ever seeing it begin.
       for (const r of this.findings.sweep()) {
-        logger.info(`Finding resolved: ${r.finding.title} after ${Math.round(r.durationMs / 1000)}s`);
+        logger.info(
+          `Finding resolved: ${r.finding.title} after ${Math.round(r.durationMs / 1000)}s`,
+        );
       }
     }, 60000);
 
@@ -222,7 +239,7 @@ class MonitoringAgent {
       if (!token) {
         logger.warn(
           'AGENT_API_TOKEN is not set. POST /test (which sends real alert email) ' +
-          'will refuse with 503.'
+            'will refuse with 503.',
         );
       }
 
@@ -232,7 +249,10 @@ class MonitoringAgent {
         port: this.port,
         host: this.host,
         authToken: token,
-        corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+        corsOrigins: (process.env.AGENT_CORS_ORIGINS || '')
+          .split(',')
+          .map((o) => o.trim())
+          .filter(Boolean),
         healthChecks: () => {
           const routers = config.getEnabledRouters();
           return [
@@ -240,18 +260,18 @@ class MonitoringAgent {
               name: 'config_loaded',
               status: routers.length > 0 ? 'healthy' : 'unhealthy',
               message: routers.length > 0 ? undefined : 'no enabled routers in config',
-              simulated: false
+              simulated: false,
             },
             {
               name: 'syslog_listener',
               // Not listening is degraded, not fatal: SNMP polling still works.
               status: syslogCollector.server ? 'healthy' : 'degraded',
               message: syslogCollector.server ? undefined : 'syslog listener is not bound',
-              simulated: false
+              simulated: false,
             },
-            simulationHealthCheck('agent1')
+            simulationHealthCheck('agent1'),
           ];
-        }
+        },
       });
 
       this.app = this.server.app;
@@ -262,7 +282,6 @@ class MonitoringAgent {
 
       // Handle graceful shutdown
       this.setupShutdownHandlers();
-
     } catch (error) {
       logger.error(`Failed to start monitoring agent: ${error.message}`);
       process.exit(1);

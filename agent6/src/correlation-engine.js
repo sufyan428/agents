@@ -31,7 +31,13 @@ class CorrelationEngine {
     this.clusters = [];
     this.lastRunAt = null;
     this.history = [];
-    this.stats = { runs: 0, findingsSeen: 0, clustersFormed: 0, suppressed: 0, collectionFailures: 0 };
+    this.stats = {
+      runs: 0,
+      findingsSeen: 0,
+      clustersFormed: 0,
+      suppressed: 0,
+      collectionFailures: 0,
+    };
   }
 
   /**
@@ -46,19 +52,23 @@ class CorrelationEngine {
     const statuses = this.agentManager.getAllAgentsStatus();
     const targets = Object.entries(statuses).filter(([, a]) => a.enabled && a.status === 'running');
 
-    const results = await Promise.all(targets.map(async ([name, agent]) => {
-      try {
-        const res = await axios.get(`http://127.0.0.1:${agent.port}/api/findings`, { timeout: 4000 });
-        return Array.isArray(res.data?.findings) ? res.data.findings : [];
-      } catch (error) {
-        // Expected for agents that have not adopted the findings route yet.
-        if (error.response?.status !== 404) {
-          this.stats.collectionFailures++;
-          logger.debug(`Could not collect findings from ${name}: ${error.message}`);
+    const results = await Promise.all(
+      targets.map(async ([name, agent]) => {
+        try {
+          const res = await axios.get(`http://127.0.0.1:${agent.port}/api/findings`, {
+            timeout: 4000,
+          });
+          return Array.isArray(res.data?.findings) ? res.data.findings : [];
+        } catch (error) {
+          // Expected for agents that have not adopted the findings route yet.
+          if (error.response?.status !== 404) {
+            this.stats.collectionFailures++;
+            logger.debug(`Could not collect findings from ${name}: ${error.message}`);
+          }
+          return [];
         }
-        return [];
-      }
-    }));
+      }),
+    );
 
     return results.flat();
   }
@@ -84,8 +94,8 @@ class CorrelationEngine {
       if (c.symptoms.length === 0) continue;
       logger.info(
         `Incident ${c.id}: ${c.all.length} findings from ${c.agentsInvolved.length} agents ` +
-        `on ${c.entity} -> probable cause "${c.rootCause.title}" ` +
-        `(confidence ${c.confidence}${c.simulated ? ', includes simulated input' : ''})`
+          `on ${c.entity} -> probable cause "${c.rootCause.title}" ` +
+          `(confidence ${c.confidence}${c.simulated ? ', includes simulated input' : ''})`,
       );
     }
 
@@ -97,7 +107,11 @@ class CorrelationEngine {
     for (const c of this.clusters) {
       if (c.symptoms.length === 0) continue;
       const existing = this.history.find((h) => h.id === c.id);
-      if (existing) { existing.lastActivityAt = c.lastActivityAt; existing.findingCount = c.all.length; continue; }
+      if (existing) {
+        existing.lastActivityAt = c.lastActivityAt;
+        existing.findingCount = c.all.length;
+        continue;
+      }
       this.history.push({
         id: c.id,
         entity: c.entity,
@@ -125,7 +139,10 @@ class CorrelationEngine {
   }
 
   stop() {
-    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
   }
 
   /** Current incidents, shaped for the API and for agent7 to enrich. */
@@ -150,7 +167,10 @@ class CorrelationEngine {
           severity: c.rootCause.severity,
         },
         symptoms: c.symptoms.map((s) => ({
-          agent: s.agent, kind: s.kind, title: s.title, severity: s.severity,
+          agent: s.agent,
+          kind: s.kind,
+          title: s.title,
+          severity: s.severity,
         })),
       })),
     };

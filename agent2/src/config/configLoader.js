@@ -2,8 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
-const DEFAULT_CONFIG_PATH = process.env.CONFIG_PATH
-  || (fs.existsSync('/app/config/router.yml')
+const DEFAULT_CONFIG_PATH =
+  process.env.CONFIG_PATH ||
+  (fs.existsSync('/app/config/router.yml')
     ? '/app/config/router.yml'
     : path.join(__dirname, '..', '..', 'config', 'router.yml'));
 
@@ -44,12 +45,12 @@ class ConfigLoader {
   applyEnvironmentOverrides() {
     // Override config values with environment variables if present
     const overrides = {
-      'PRIMARY_HOST': 'primary.host',
-      'PRIMARY_COMMUNITY': 'primary.community',
-      'BACKUP_HOST': 'backup.host',
-      'BACKUP_COMMUNITY': 'backup.community',
-      'LOG_LEVEL': 'logging.level',
-      'METRICS_PORT': 'metrics.port',
+      PRIMARY_HOST: 'primary.host',
+      PRIMARY_COMMUNITY: 'primary.community',
+      BACKUP_HOST: 'backup.host',
+      BACKUP_COMMUNITY: 'backup.community',
+      LOG_LEVEL: 'logging.level',
+      METRICS_PORT: 'metrics.port',
     };
 
     for (const [envVar, configPath] of Object.entries(overrides)) {

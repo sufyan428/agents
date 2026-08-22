@@ -11,8 +11,8 @@ services:
       dockerfile: Dockerfile
     container_name: router-sim
     ports:
-      - "127.0.0.1:1161:1161/udp"
-      - "127.0.0.1:8090:8090"
+      - '127.0.0.1:1161:1161/udp'
+      - '127.0.0.1:8090:8090'
     environment:
       - SIM_SYSLOG_HOST=agent1-monitoring
       - SIM_SYSLOG_PORTS=5140,5142,5143,5144
@@ -20,7 +20,13 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8090/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:8090/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -32,8 +38,8 @@ services:
       dockerfile: Dockerfile
     container_name: agent1-monitoring
     ports:
-      - "127.0.0.1:9090:3000"
-      - "127.0.0.1:514:514/udp"
+      - '127.0.0.1:9090:3000'
+      - '127.0.0.1:514:514/udp'
     volumes:
       - ../agent1/config:/app/config:ro
       - ../agent1/logs:/app/logs
@@ -46,7 +52,7 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -58,7 +64,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent2-resilience
     ports:
-      - "127.0.0.1:9091:9090"
+      - '127.0.0.1:9091:9090'
     volumes:
       - ../agent2/config:/app/config:ro
       - ../agent2/logs:/app/logs
@@ -72,7 +78,7 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9090/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9090/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -84,9 +90,9 @@ services:
       dockerfile: Dockerfile
     container_name: agent3-security
     ports:
-      - "127.0.0.1:9092:9091"
-      - "127.0.0.1:515:514/udp"
-      - "127.0.0.1:162:162/udp"
+      - '127.0.0.1:9092:9091'
+      - '127.0.0.1:515:514/udp'
+      - '127.0.0.1:162:162/udp'
     volumes:
       - ../agent3/config:/app/config:ro
       - ../agent3/logs:/app/logs
@@ -99,7 +105,7 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9091/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9091/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -111,7 +117,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent4-performance
     ports:
-      - "127.0.0.1:9093:9091"
+      - '127.0.0.1:9093:9091'
     volumes:
       - ../agent4/router.yml:/app/router.yml:ro
       - ../agent4/logs:/app/logs
@@ -124,7 +130,13 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9091/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:9091/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -136,7 +148,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent5-automation
     ports:
-      - "127.0.0.1:9094:9091"
+      - '127.0.0.1:9094:9091'
     volumes:
       - ../agent5/config.yml:/app/config.yml:ro
       - ../agent5/router.yml:/app/router.yml:ro
@@ -151,7 +163,7 @@ services:
       - router-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9091/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:9091/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -161,7 +173,7 @@ services:
     image: prom/prometheus:latest
     container_name: unified-prometheus
     ports:
-      - "127.0.0.1:9095:9090"
+      - '127.0.0.1:9095:9090'
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -179,7 +191,7 @@ services:
     image: grafana/grafana:latest
     container_name: unified-grafana
     ports:
-      - "127.0.0.1:3000:3000"
+      - '127.0.0.1:3000:3000'
     volumes:
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro

@@ -141,8 +141,13 @@ test('envelope without a correlationId starts a new trace', () => {
 test('AgentEventSchema rejects an unknown event type', () => {
   assert.throws(() =>
     AgentEventSchema.parse({
-      id: 'e-1', source: 's', ts: new Date().toISOString(),
-      correlationId: 'c-1', v: 1, type: 'nope', payload: {},
+      id: 'e-1',
+      source: 's',
+      ts: new Date().toISOString(),
+      correlationId: 'c-1',
+      v: 1,
+      type: 'nope',
+      payload: {},
     }),
   );
 });

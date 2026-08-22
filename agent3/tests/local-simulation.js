@@ -1,6 +1,6 @@
 /**
  * Local Simulation Script for Security & Intrusion Detection Agent
- * 
+ *
  * This script simulates various security events to test the agent's
  * detection capabilities without connecting to a real router.
  */
@@ -128,7 +128,7 @@ class SecuritySimulation {
   simulateTrafficSpike() {
     console.log('\n=== Simulating Traffic Spike ===');
     const sourceIps = ['10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4', '10.0.0.5'];
-    
+
     for (let i = 0; i < 20; i++) {
       setTimeout(() => {
         const sourceIp = sourceIps[i % sourceIps.length];
@@ -148,30 +148,30 @@ class SecuritySimulation {
     console.log('╚════════════════════════════════════════════════════════════╝');
 
     // Sequence of events
-    this.simulateFailedLogins(6);  // Triggers brute force alert
+    this.simulateFailedLogins(6); // Triggers brute force alert
     await this.sleep(3500);
-    
+
     this.simulateSuccessfulLogin();
     await this.sleep(1000);
-    
+
     this.simulateAccountLockout();
     await this.sleep(1000);
-    
+
     this.simulateUnauthorizedAccess();
     await this.sleep(1000);
-    
+
     this.simulateAclViolation();
     await this.sleep(1000);
-    
+
     this.simulatePortScan();
     await this.sleep(3000);
-    
+
     this.simulatePrivilegeEscalation();
     await this.sleep(1000);
-    
+
     this.simulateDeviceRestart();
     await this.sleep(1000);
-    
+
     this.simulateTrafficSpike();
     await this.sleep(3000);
 
@@ -199,7 +199,7 @@ class SecuritySimulation {
    * Sleep helper function
    */
   sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -213,17 +213,20 @@ class SecuritySimulation {
 // Run simulation if called directly
 if (require.main === module) {
   const simulation = new SecuritySimulation();
-  
-  simulation.runFullSimulation().then(() => {
-    setTimeout(() => {
+
+  simulation
+    .runFullSimulation()
+    .then(() => {
+      setTimeout(() => {
+        simulation.close();
+        process.exit(0);
+      }, 2000);
+    })
+    .catch((error) => {
+      console.error('Simulation error:', error);
       simulation.close();
-      process.exit(0);
-    }, 2000);
-  }).catch((error) => {
-    console.error('Simulation error:', error);
-    simulation.close();
-    process.exit(1);
-  });
+      process.exit(1);
+    });
 }
 
 module.exports = SecuritySimulation;

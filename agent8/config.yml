@@ -8,7 +8,7 @@ server:
   metrics_path: /metrics
 
 orchestrator:
-  base_url: "http://localhost:8080"
+  base_url: 'http://localhost:8080'
   timeout_ms: 5000
 
 # Where this agent pulls source data from. agent5 already produces structured
@@ -17,8 +17,8 @@ orchestrator:
 # cross-agent incident correlations) and is skipped gracefully if unreachable
 # or disabled (no API key configured).
 sources:
-  agent5_url: "http://localhost:9094"
-  agent7_url: "http://localhost:9096"
+  agent5_url: 'http://localhost:9094'
+  agent7_url: 'http://localhost:9096'
   timeout_ms: 15000
   report_types:
     - compliance
@@ -31,8 +31,8 @@ ai:
   # compatibility endpoint, Together, Groq, Ollama, vLLM, LM Studio and
   # anything else speaking /chat/completions. Use "anthropic" for the native
   # Anthropic API.
-  provider: "openai-compatible"
-  base_url: "https://openrouter.ai/api/v1"
+  provider: 'openai-compatible'
+  base_url: 'https://openrouter.ai/api/v1'
 
   # Any model name the endpoint accepts. The framework holds no opinion and
   # maintains no allowlist - one would be wrong within a month.
@@ -44,7 +44,7 @@ ai:
   #
   # Agents 7-10 scale with whatever is behind them. A free model works; a
   # frontier model works better. That is your call and your bill.
-  model: "nvidia/nemotron-3-nano-30b-a3b:free"
+  model: 'nvidia/nemotron-3-nano-30b-a3b:free'
 
   max_tokens: 4096
   request_timeout_ms: 45000
@@ -55,12 +55,12 @@ ai:
   daily_call_budget: 500
   daily_token_budget: 0
 schedule:
-  digest_cron: "0 6 * * *"   # daily at 06:00
+  digest_cron: '0 6 * * *' # daily at 06:00
   history_size: 30
 
 reports:
-  output_directory: "./reports"
+  output_directory: './reports'
 
 logging:
-  level: "info"
-  directory: "./logs"
+  level: 'info'
+  directory: './logs'

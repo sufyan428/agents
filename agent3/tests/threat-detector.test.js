@@ -9,7 +9,8 @@ const make = (config = {}) => {
   return {
     findings,
     d: new ThreatDetector({
-      findingStore: findings, logger: silent,
+      findingStore: findings,
+      logger: silent,
       config: { time_window_seconds: 300, max_failed_attempts: 5, ...config },
     }),
   };
@@ -31,7 +32,12 @@ test('the same count inside the window is a brute force', () => {
   const { d, findings } = make();
   const t = Date.UTC(2026, 0, 1);
   for (let i = 0; i < 6; i++) {
-    d.recordAuthFailure({ sourceIp: '10.0.0.5', username: 'admin', router: 'R1', at: t + i * 1000 });
+    d.recordAuthFailure({
+      sourceIp: '10.0.0.5',
+      username: 'admin',
+      router: 'R1',
+      at: t + i * 1000,
+    });
   }
   const f = findings.list().find((x) => x.kind === 'auth_failure_burst');
   assert.ok(f, 'should detect');
@@ -56,11 +62,17 @@ test('password spraying is caught even though no single source crosses the thres
   const t = Date.UTC(2026, 0, 1);
   for (let s = 0; s < 8; s++) {
     for (let i = 0; i < 2; i++) {
-      d.recordAuthFailure({ sourceIp: `10.0.1.${s}`, username: `user${s}`, router: 'R1', at: t + i * 1000 });
+      d.recordAuthFailure({
+        sourceIp: `10.0.1.${s}`,
+        username: `user${s}`,
+        router: 'R1',
+        at: t + i * 1000,
+      });
     }
   }
   assert.equal(
-    findings.list().some((x) => x.kind === 'auth_failure_burst'), false,
+    findings.list().some((x) => x.kind === 'auth_failure_burst'),
+    false,
     'no single source reached the threshold',
   );
   const spray = findings.list().find((x) => x.kind === 'auth_failure_distributed');
@@ -101,8 +113,10 @@ test('an ongoing attack produces one finding, not one per packet', () => {
 test('separate sources are tracked separately', () => {
   const { d } = make();
   const t = Date.UTC(2026, 0, 1);
-  for (let i = 0; i < 6; i++) d.recordAuthFailure({ sourceIp: '10.0.0.1', router: 'R1', at: t + i * 100 });
-  for (let i = 0; i < 2; i++) d.recordAuthFailure({ sourceIp: '10.0.0.2', router: 'R1', at: t + i * 100 });
+  for (let i = 0; i < 6; i++)
+    d.recordAuthFailure({ sourceIp: '10.0.0.1', router: 'R1', at: t + i * 100 });
+  for (let i = 0; i < 2; i++)
+    d.recordAuthFailure({ sourceIp: '10.0.0.2', router: 'R1', at: t + i * 100 });
   const stats = d.getStats();
   assert.ok(stats.trackedSources >= 2);
   assert.equal(stats.bruteForce, 1, 'only the noisy source triggered');

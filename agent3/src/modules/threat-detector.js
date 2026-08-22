@@ -51,7 +51,12 @@ class ThreatDetector {
   alarmFor(key, raiseAt) {
     let a = this.alarms.get(key);
     if (!a) {
-      a = new Hysteresis({ raiseAt, clearAt: Math.max(raiseAt * 0.5, 1), raiseAfter: 1, clearAfter: 3 });
+      a = new Hysteresis({
+        raiseAt,
+        clearAt: Math.max(raiseAt * 0.5, 1),
+        raiseAfter: 1,
+        clearAfter: 3,
+      });
       this.alarms.set(key, a);
     }
     return a;
@@ -96,19 +101,25 @@ class ThreatDetector {
 
     if ((bf.changed && bf.state === 'raised') || escalating) {
       this.stats.bruteForce++;
-      const f = this.emit({
-        kind: 'auth_failure_burst',
-        severity: critical ? 'critical' : 'high',
-        title: `Credential brute force from ${sourceIp}`,
-        detail:
-          `${perSource} authentication failures from ${sourceIp} in ${windowSec}s ` +
-          `(threshold ${this.perSourceThreshold}). Most recent user: ${username}.`,
-        evidence: {
-          sourceIp, failuresInWindow: perSource, windowSeconds: windowSec,
-          threshold: this.perSourceThreshold, lastUsername: username,
+      const f = this.emit(
+        {
+          kind: 'auth_failure_burst',
+          severity: critical ? 'critical' : 'high',
+          title: `Credential brute force from ${sourceIp}`,
+          detail:
+            `${perSource} authentication failures from ${sourceIp} in ${windowSec}s ` +
+            `(threshold ${this.perSourceThreshold}). Most recent user: ${username}.`,
+          evidence: {
+            sourceIp,
+            failuresInWindow: perSource,
+            windowSeconds: windowSec,
+            threshold: this.perSourceThreshold,
+            lastUsername: username,
+          },
+          tags: ['authentication', sourceIp],
         },
-        tags: ['authentication', sourceIp],
-      }, { type: 'router', id: router, name: router });
+        { type: 'router', id: router, name: router },
+      );
       if (f) emitted.push(f);
     } else if (bf.changed) {
       this.findings.clear('agent3-security', 'auth_failure_burst', { type: 'router', id: router });
@@ -121,23 +132,26 @@ class ThreatDetector {
       const sp = sprayAlarm.update(active.length, at);
       if (sp.changed && sp.state === 'raised') {
         this.stats.spraying++;
-        const f = this.emit({
-          kind: 'auth_failure_distributed',
-          severity: 'high',
-          title: `Distributed authentication failures against ${router}`,
-          detail:
-            `${active.length} distinct sources each produced at least ${this.sprayPerSourceMin} ` +
-            `failures within ${windowSec}s. Individually all are below the per-source threshold ` +
-            `of ${this.perSourceThreshold}, which is what password spraying is designed to achieve.`,
-          evidence: {
-            distinctSources: active.length,
-            perSourceMinimum: this.sprayPerSourceMin,
-            totalFailures: active.reduce((s, k) => s + k.count, 0),
-            topSources: active.slice(0, 5),
-            windowSeconds: windowSec,
+        const f = this.emit(
+          {
+            kind: 'auth_failure_distributed',
+            severity: 'high',
+            title: `Distributed authentication failures against ${router}`,
+            detail:
+              `${active.length} distinct sources each produced at least ${this.sprayPerSourceMin} ` +
+              `failures within ${windowSec}s. Individually all are below the per-source threshold ` +
+              `of ${this.perSourceThreshold}, which is what password spraying is designed to achieve.`,
+            evidence: {
+              distinctSources: active.length,
+              perSourceMinimum: this.sprayPerSourceMin,
+              totalFailures: active.reduce((s, k) => s + k.count, 0),
+              topSources: active.slice(0, 5),
+              windowSeconds: windowSec,
+            },
+            tags: ['authentication', 'distributed'],
           },
-          tags: ['authentication', 'distributed'],
-        }, { type: 'router', id: router, name: router });
+          { type: 'router', id: router, name: router },
+        );
         if (f) emitted.push(f);
       }
     }
@@ -164,21 +178,24 @@ class ThreatDetector {
     }
 
     this.stats.portScans++;
-    return this.emit({
-      kind: 'port_scan',
-      severity: 'high',
-      title: `Port scan from ${sourceIp}`,
-      detail:
-        `${sourceIp} touched ${verdict.distinctPorts} distinct ports within ` +
-        `${Math.round(verdict.windowMs / 1000)}s. Distinct ports rather than connection ` +
-        'count is what distinguishes a scan from a busy client.',
-      evidence: {
-        sourceIp,
-        distinctPorts: verdict.distinctPorts,
-        windowSeconds: Math.round(verdict.windowMs / 1000),
+    return this.emit(
+      {
+        kind: 'port_scan',
+        severity: 'high',
+        title: `Port scan from ${sourceIp}`,
+        detail:
+          `${sourceIp} touched ${verdict.distinctPorts} distinct ports within ` +
+          `${Math.round(verdict.windowMs / 1000)}s. Distinct ports rather than connection ` +
+          'count is what distinguishes a scan from a busy client.',
+        evidence: {
+          sourceIp,
+          distinctPorts: verdict.distinctPorts,
+          windowSeconds: Math.round(verdict.windowMs / 1000),
+        },
+        tags: ['scanning', sourceIp],
       },
-      tags: ['scanning', sourceIp],
-    }, { type: 'router', id: router, name: router });
+      { type: 'router', id: router, name: router },
+    );
   }
 
   getStats() {

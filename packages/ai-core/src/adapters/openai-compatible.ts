@@ -51,9 +51,19 @@ export class OpenAiCompatibleAdapter implements Adapter {
       });
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        throw new AiError('timeout', `Request exceeded ${this.cfg.requestTimeoutMs}ms`, undefined, true);
+        throw new AiError(
+          'timeout',
+          `Request exceeded ${this.cfg.requestTimeoutMs}ms`,
+          undefined,
+          true,
+        );
       }
-      throw new AiError('transport', `Could not reach ${url}: ${(err as Error).message}`, undefined, true);
+      throw new AiError(
+        'transport',
+        `Could not reach ${url}: ${(err as Error).message}`,
+        undefined,
+        true,
+      );
     }
 
     if (!res.ok) throw await this.errorFor(res);
@@ -67,7 +77,11 @@ export class OpenAiCompatibleAdapter implements Adapter {
 
     // Some gateways return HTTP 200 with an error object in the body.
     if (json.error) {
-      throw new AiError('bad_response', `Provider error: ${json.error.message ?? 'unspecified'}`, 200);
+      throw new AiError(
+        'bad_response',
+        `Provider error: ${json.error.message ?? 'unspecified'}`,
+        200,
+      );
     }
 
     const choice = json.choices?.[0];
@@ -108,7 +122,11 @@ export class OpenAiCompatibleAdapter implements Adapter {
     // not entitled to this particular model - a config problem, not a
     // credential one, and it must not disable everything else.
     if (res.status === 401) {
-      return new AiError('auth', `Authentication failed (401). Check the API key. ${detail}`.trim(), 401);
+      return new AiError(
+        'auth',
+        `Authentication failed (401). Check the API key. ${detail}`.trim(),
+        401,
+      );
     }
     if (res.status === 403) {
       return new AiError(
@@ -122,7 +140,12 @@ export class OpenAiCompatibleAdapter implements Adapter {
       return new AiError('rate_limit', `Rate limited by provider. ${detail}`.trim(), 429, true);
     }
     if (res.status >= 500) {
-      return new AiError('transport', `Provider server error ${res.status}. ${detail}`.trim(), res.status, true);
+      return new AiError(
+        'transport',
+        `Provider server error ${res.status}. ${detail}`.trim(),
+        res.status,
+        true,
+      );
     }
     if (res.status === 404) {
       return new AiError(

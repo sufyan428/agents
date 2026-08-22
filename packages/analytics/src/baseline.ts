@@ -68,11 +68,21 @@ export class Ewma {
     this._variance = (1 - this.alpha) * (this._variance + this.alpha * delta * delta);
   }
 
-  get mean(): number { return this._mean; }
-  get variance(): number { return this._variance; }
-  get stdDev(): number { return Math.sqrt(this._variance); }
-  get count(): number { return this._count; }
-  get ready(): boolean { return this._count >= this.warmup; }
+  get mean(): number {
+    return this._mean;
+  }
+  get variance(): number {
+    return this._variance;
+  }
+  get stdDev(): number {
+    return Math.sqrt(this._variance);
+  }
+  get count(): number {
+    return this._count;
+  }
+  get ready(): boolean {
+    return this._count >= this.warmup;
+  }
 
   reset(): void {
     this._mean = 0;
@@ -102,7 +112,9 @@ export class RollingMad {
     if (this.samples.length > this.window) this.samples.shift();
   }
 
-  get count(): number { return this.samples.length; }
+  get count(): number {
+    return this.samples.length;
+  }
 
   get median(): number {
     return RollingMad.medianOf(this.samples);
@@ -132,7 +144,9 @@ export class RollingMad {
     return (value - this.median) / mad;
   }
 
-  reset(): void { this.samples.length = 0; }
+  reset(): void {
+    this.samples.length = 0;
+  }
 
   static medianOf(values: readonly number[]): number {
     if (values.length === 0) return 0;
@@ -243,7 +257,10 @@ export class Baseline {
 
     if (this.opts.seasonal) {
       const s = this.seasonFor(at);
-      if (s.ewma.ready) { series = s; basis = 'seasonal'; }
+      if (s.ewma.ready) {
+        series = s;
+        basis = 'seasonal';
+      }
     }
 
     const ready = series.ewma.ready && series.mad.count >= 3;
@@ -310,6 +327,10 @@ export class BaselineSet {
     return this.for(entity, metric).submit(value, at);
   }
 
-  get size(): number { return this.map.size; }
-  reset(): void { this.map.clear(); }
+  get size(): number {
+    return this.map.size;
+  }
+  reset(): void {
+    this.map.clear();
+  }
 }

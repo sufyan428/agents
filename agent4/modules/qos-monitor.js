@@ -3,9 +3,8 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent4.qosMetrics',
   'ALL QoS class metrics are generated. There is no real collection path.',
-  'per-class counters via CISCO-CLASS-BASED-QOS-MIB, or the vendor equivalent'
+  'per-class counters via CISCO-CLASS-BASED-QOS-MIB, or the vendor equivalent',
 );
-
 
 class QosMonitor {
   constructor(config, logger) {
@@ -19,7 +18,7 @@ class QosMonitor {
     const metrics = {
       classes: [],
       violations: {},
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     try {
@@ -38,9 +37,10 @@ class QosMonitor {
         }
       }
 
-      this.logger.info(`QoS metrics collected: ${metrics.classes.length} classes, ` +
-                      `${Object.keys(metrics.violations).length} violations`);
-
+      this.logger.info(
+        `QoS metrics collected: ${metrics.classes.length} classes, ` +
+          `${Object.keys(metrics.violations).length} violations`,
+      );
     } catch (error) {
       this.logger.error(`Error collecting QoS metrics: ${error.message}`);
       // Return simulated data for testing
@@ -78,7 +78,7 @@ class QosMonitor {
       byteCount: byteCount,
       droppedPackets: droppedPackets,
       isOverLimit: isOverLimit,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -89,10 +89,11 @@ class QosMonitor {
     if (classMetrics.isOverLimit) {
       violations.push({
         type: 'bandwidth_exceeded',
-        description: `${classMetrics.name} class exceeded bandwidth allocation: ` +
-                   `${classMetrics.bandwidthUtilization}% > ${classMetrics.allocatedBandwidth}%`,
+        description:
+          `${classMetrics.name} class exceeded bandwidth allocation: ` +
+          `${classMetrics.bandwidthUtilization}% > ${classMetrics.allocatedBandwidth}%`,
         severity: 'high',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -101,10 +102,11 @@ class QosMonitor {
     if (classMetrics.droppedPackets > dropThreshold) {
       violations.push({
         type: 'excessive_drops',
-        description: `${classMetrics.name} class has excessive packet drops: ` +
-                   `${classMetrics.droppedPackets} packets`,
+        description:
+          `${classMetrics.name} class has excessive packet drops: ` +
+          `${classMetrics.droppedPackets} packets`,
         severity: 'medium',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -126,7 +128,7 @@ class QosMonitor {
         byteCount: Math.floor(Math.random() * 10000000) + 1000000,
         droppedPackets: Math.floor(Math.random() * 100),
         isOverLimit: false,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // Simulate violations occasionally

@@ -12,8 +12,17 @@ const SECRET_KEY_PATTERNS = [
   // 'pass' rather than 'password', so SMTP_PASS and pass/passwd variants are
   // all caught. It over-matches words like "passive", which is the correct
   // trade: an over-redacted log line costs nothing, a leaked credential does.
-  'pass', 'secret', 'token', 'apikey', 'api_key',
-  'community', 'credential', 'authorization', 'auth', 'private', 'key',
+  'pass',
+  'secret',
+  'token',
+  'apikey',
+  'api_key',
+  'community',
+  'credential',
+  'authorization',
+  'auth',
+  'private',
+  'key',
 ];
 
 const REDACTED = '[redacted]';
@@ -79,12 +88,13 @@ export interface LoggerOptions {
 export type AgentLogger = winston.Logger;
 
 export function createLogger(opts: LoggerOptions): AgentLogger {
-  const useJson = opts.format
-    ? opts.format === 'json'
-    : !process.stdout.isTTY;
+  const useJson = opts.format ? opts.format === 'json' : !process.stdout.isTTY;
 
   const pretty = winston.format.printf((info) => {
-    const { timestamp, level, message, agent, correlationId, ...rest } = info as Record<string, unknown>;
+    const { timestamp, level, message, agent, correlationId, ...rest } = info as Record<
+      string,
+      unknown
+    >;
     const cid = correlationId ? ` [${String(correlationId)}]` : '';
     const extra = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
     return `${String(timestamp)} ${String(level).toUpperCase().padEnd(5)} [${String(agent)}]${cid} ${String(message)}${extra}`;

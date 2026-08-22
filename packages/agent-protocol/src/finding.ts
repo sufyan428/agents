@@ -158,7 +158,8 @@ export function createFinding(input: FindingInput, now: Date = new Date()): Find
 export function mergeFinding(existing: Finding, next: Finding): Finding {
   return {
     ...existing,
-    severity: compareSeverity(next.severity, existing.severity) > 0 ? next.severity : existing.severity,
+    severity:
+      compareSeverity(next.severity, existing.severity) > 0 ? next.severity : existing.severity,
     lastSeen: next.lastSeen,
     count: existing.count + 1,
     evidence: { ...existing.evidence, ...next.evidence },

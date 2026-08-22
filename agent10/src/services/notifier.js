@@ -7,7 +7,9 @@ class Notifier {
   }
 
   get hasAnyWebhook() {
-    return Boolean(this.config.notifications.slackWebhookUrl || this.config.notifications.discordWebhookUrl);
+    return Boolean(
+      this.config.notifications.slackWebhookUrl || this.config.notifications.discordWebhookUrl,
+    );
   }
 
   async send(text) {

@@ -1,7 +1,15 @@
 const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 
 class ExpressServer {
-  constructor(config, logger, metrics, heartbeatChecker, failoverManager, configSync, syslogListener) {
+  constructor(
+    config,
+    logger,
+    metrics,
+    heartbeatChecker,
+    failoverManager,
+    configSync,
+    syslogListener,
+  ) {
     this.config = config;
     this.logger = logger;
     this.metrics = metrics;
@@ -9,14 +17,13 @@ class ExpressServer {
     this.failoverManager = failoverManager;
     this.configSync = configSync;
     this.syslogListener = syslogListener;
-    
+
     // Built in start(), so the port and bind host from config are available.
     this.agentServer = null;
     this.app = null;
   }
 
   setupRoutes(app) {
-    
     // /health and /metrics come from the shared factory. The agent's own
     // Prometheus registry is still exposed, under a distinct path, because it
     // holds the failover counters the factory registry knows nothing about.
@@ -24,7 +31,9 @@ class ExpressServer {
       try {
         res.set('Content-Type', this.metrics.getContentType());
         res.send(await this.metrics.getMetrics());
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     });
 
     // Status endpoint
@@ -43,27 +52,27 @@ class ExpressServer {
     app.post('/failover/manual', async (req, res) => {
       try {
         const { target } = req.body;
-        
+
         if (target !== 'backup' && target !== 'primary') {
           return res.status(400).json({
-            error: 'Invalid target. Must be "backup" or "primary"'
+            error: 'Invalid target. Must be "backup" or "primary"',
           });
         }
 
         const eventType = target === 'backup' ? 'failover' : 'failback';
         const result = await this.failoverManager.handleFailover({
           type: eventType,
-          reason: 'manual-trigger'
+          reason: 'manual-trigger',
         });
 
         res.json(result);
       } catch (error) {
         this.logger.error('Manual failover failed', {
-          error: error.message
+          error: error.message,
         });
         res.status(500).json({
           error: 'Manual failover failed',
-          message: error.message
+          message: error.message,
         });
       }
     });
@@ -82,11 +91,11 @@ class ExpressServer {
         res.json(result);
       } catch (error) {
         this.logger.error('Manual config sync failed', {
-          error: error.message
+          error: error.message,
         });
         res.status(500).json({
           error: 'Manual config sync failed',
-          message: error.message
+          message: error.message,
         });
       }
     });
@@ -127,21 +136,18 @@ class ExpressServer {
       res.status(501).json({
         success: false,
         error: 'Not implemented',
-        detail: 'Restart the agent to pick up configuration changes.'
+        detail: 'Restart the agent to pick up configuration changes.',
       });
     });
-
   }
 
   getHealthStatus() {
     const heartbeatStatus = this.heartbeatChecker.getStatus();
     const failoverStatus = this.failoverManager.getStatus();
     const syncStatus = this.configSync.getSyncStatus();
-    
-    const healthy = (
-      heartbeatStatus.primary.health === 'healthy' ||
-      heartbeatStatus.backup.health === 'healthy'
-    );
+
+    const healthy =
+      heartbeatStatus.primary.health === 'healthy' || heartbeatStatus.backup.health === 'healthy';
 
     return {
       healthy,
@@ -149,7 +155,7 @@ class ExpressServer {
       uptime: process.uptime(),
       heartbeat: heartbeatStatus,
       failover: failoverStatus,
-      sync: syncStatus
+      sync: syncStatus,
     };
   }
 
@@ -160,7 +166,7 @@ class ExpressServer {
         version: '1.0.0',
         uptime: process.uptime(),
         nodeVersion: process.version,
-        platform: process.platform
+        platform: process.platform,
       },
       heartbeat: this.heartbeatChecker.getStatus(),
       failover: this.failoverManager.getStatus(),
@@ -170,40 +176,43 @@ class ExpressServer {
         primary: this.config.primary?.host,
         backup: this.config.backup?.host,
         failoverEnabled: this.config.failover?.enabled,
-        syncEnabled: this.config.sync?.enabled
-      }
+        syncEnabled: this.config.sync?.enabled,
+      },
     };
   }
 
   sanitizeConfig(config) {
     // Remove sensitive information from config
     const sanitized = JSON.parse(JSON.stringify(config));
-    
+
     const removePasswords = (obj) => {
       for (const key in obj) {
-        if (key.toLowerCase().includes('password') ||
-            key.toLowerCase().includes('secret') ||
-            key.toLowerCase().includes('community')) {
+        if (
+          key.toLowerCase().includes('password') ||
+          key.toLowerCase().includes('secret') ||
+          key.toLowerCase().includes('community')
+        ) {
           obj[key] = '***REDACTED***';
         } else if (typeof obj[key] === 'object' && obj[key] !== null) {
           removePasswords(obj[key]);
         }
       }
     };
-    
+
     removePasswords(sanitized);
     return sanitized;
   }
 
   start() {
-    const port = Number(process.env.PORT) || this.config.server?.port || this.config.metrics?.port || 9091;
+    const port =
+      Number(process.env.PORT) || this.config.server?.port || this.config.metrics?.port || 9091;
     const host = process.env.BIND_HOST || this.config.server?.host || '127.0.0.1';
     const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
 
     if (!token) {
       this.logger.warn(
         'AGENT_API_TOKEN is not set. POST /failover/manual and /sync/trigger will ' +
-        'refuse with 503 - an unauthenticated caller must never be able to flip a router.'
+          'refuse with 503 - an unauthenticated caller must never be able to flip a router.',
       );
     }
 
@@ -213,7 +222,10 @@ class ExpressServer {
       port,
       host,
       authToken: token,
-      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
       healthChecks: () => {
         const hb = this.heartbeatChecker.getStatus();
         // Router reachability is DEGRADED, not unhealthy. The agent is doing
@@ -224,7 +236,7 @@ class ExpressServer {
           name,
           status: state.health === 'healthy' ? 'healthy' : 'degraded',
           message: state.health === 'healthy' ? undefined : `${name} is ${state.health}`,
-          simulated: false
+          simulated: false,
         });
         return [
           routerCheck('primary_router', hb.primary),
@@ -233,11 +245,11 @@ class ExpressServer {
             name: 'heartbeat_loop',
             status: hb.isActive ? 'healthy' : 'unhealthy',
             message: hb.isActive ? undefined : 'heartbeat loop is not running',
-            simulated: false
+            simulated: false,
           },
-          simulationHealthCheck('agent2')
+          simulationHealthCheck('agent2'),
         ];
-      }
+      },
     });
 
     this.app = this.agentServer.app;

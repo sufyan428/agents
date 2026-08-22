@@ -1,6 +1,6 @@
 /**
  * Configuration Loader Module
- * 
+ *
  * Loads and validates the router configuration file
  */
 
@@ -17,7 +17,7 @@ class ConfigLoader {
   static load(configPath) {
     try {
       const absolutePath = path.resolve(configPath);
-      
+
       if (!fs.existsSync(absolutePath)) {
         throw new Error(`Configuration file not found: ${absolutePath}`);
       }
@@ -50,7 +50,7 @@ class ConfigLoader {
       'alerts',
       'logging',
       'prometheus',
-      'agent'
+      'agent',
     ];
 
     for (const section of required) {
@@ -86,10 +86,10 @@ class ConfigLoader {
       'security.configuration.enabled',
       'prometheus.enabled',
       'netconf.enabled',
-      'restconf.enabled'
+      'restconf.enabled',
     ];
 
-    booleanFields.forEach(field => {
+    booleanFields.forEach((field) => {
       const parts = field.split('.');
       let obj = config;
       for (let i = 0; i < parts.length - 1; i++) {
@@ -109,10 +109,10 @@ class ConfigLoader {
       'security.authentication.time_window_seconds',
       'security.traffic.baseline_samples',
       'security.traffic.anomaly_threshold',
-      'security.configuration.validation_interval'
+      'security.configuration.validation_interval',
     ];
 
-    numericFields.forEach(field => {
+    numericFields.forEach((field) => {
       const parts = field.split('.');
       let obj = config;
       for (let i = 0; i < parts.length - 1; i++) {
@@ -132,7 +132,7 @@ class ConfigLoader {
    */
   static loadGoldenBaseline(basePath) {
     const baselinePath = path.resolve(basePath, './config/golden-baseline.json');
-    
+
     if (!fs.existsSync(baselinePath)) {
       throw new Error(`Golden baseline file not found: ${baselinePath}`);
     }

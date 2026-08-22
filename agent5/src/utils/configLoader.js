@@ -33,13 +33,10 @@ class ConfigLoader {
   }
 
   async loadAllConfigs(configPath = './config.yml', routerConfigPath = './router.yml') {
-    await Promise.all([
-      this.loadConfig(configPath),
-      this.loadRouterConfig(routerConfigPath)
-    ]);
+    await Promise.all([this.loadConfig(configPath), this.loadRouterConfig(routerConfigPath)]);
     return {
       config: this.config,
-      routerConfig: this.routerConfig
+      routerConfig: this.routerConfig,
     };
   }
 

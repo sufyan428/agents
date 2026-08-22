@@ -1,6 +1,6 @@
 /**
  * ICMP Monitor Module
- * 
+ *
  * Monitors router availability and connectivity using ICMP (ping)
  */
 
@@ -31,7 +31,7 @@ class IcmpMonitor {
     try {
       this.logger.info('Starting ICMP monitor', {
         target_host: this.targetHost,
-        interval_seconds: this.config.interval
+        interval_seconds: this.config.interval,
       });
 
       // Perform initial ping
@@ -44,7 +44,6 @@ class IcmpMonitor {
 
       this.isRunning = true;
       this.logger.info('ICMP monitor started');
-
     } catch (error) {
       this.logger.error('Failed to start ICMP monitor:', error);
       throw error;
@@ -75,7 +74,7 @@ class IcmpMonitor {
 
       const result = await ping.promise.probe(this.targetHost, {
         timeout: this.config.timeout / 1000, // Convert to seconds
-        extra: ['-c', '1']
+        extra: ['-c', '1'],
       });
 
       const responseTime = (Date.now() - startTime) / 1000;
@@ -85,7 +84,6 @@ class IcmpMonitor {
       } else {
         this.handleFailedPing(result);
       }
-
     } catch (error) {
       this.logger.error('Error performing ping:', error);
       this.handleFailedPing({ error: error.message });
@@ -107,14 +105,14 @@ class IcmpMonitor {
     this.logger.debug('ICMP ping successful', {
       host: this.targetHost,
       response_time: responseTime.toFixed(3),
-      packet_loss: result.packetLoss
+      packet_loss: result.packetLoss,
     });
 
     // Check for unusually high response times
     if (responseTime > 1.0) {
       this.logger.warn('High ICMP response time detected', {
         host: this.targetHost,
-        response_time: responseTime.toFixed(3)
+        response_time: responseTime.toFixed(3),
       });
 
       this.alertDispatcher.dispatchAlert({
@@ -126,8 +124,8 @@ class IcmpMonitor {
           host: this.targetHost,
           response_time: responseTime.toFixed(3),
           recommended_action: 'Check network congestion and routing',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }
@@ -146,7 +144,7 @@ class IcmpMonitor {
     this.logger.warn('ICMP ping failed', {
       host: this.targetHost,
       consecutive_failures: this.consecutiveFailures,
-      error: result.error || 'Host unreachable'
+      error: result.error || 'Host unreachable',
     });
 
     // Check if we've had multiple consecutive failures
@@ -164,11 +162,12 @@ class IcmpMonitor {
           total_failures: this.failureCount,
           total_success: this.successCount,
           last_success: this.lastSuccessTime,
-          recommended_action: severity === 'critical'
-            ? 'CRITICAL: Router may be down or disconnected. Immediate investigation required.'
-            : 'Investigate connectivity issue and check router status.',
-          timestamp: this.lastFailureTime
-        }
+          recommended_action:
+            severity === 'critical'
+              ? 'CRITICAL: Router may be down or disconnected. Immediate investigation required.'
+              : 'Investigate connectivity issue and check router status.',
+          timestamp: this.lastFailureTime,
+        },
       });
 
       this.metrics.recordThreat('host_unreachable', severity);
@@ -199,7 +198,7 @@ class IcmpMonitor {
       consecutive_failures: this.consecutiveFailures,
       last_success: this.lastSuccessTime,
       last_failure: this.lastFailureTime,
-      monitoring_interval: this.config.interval
+      monitoring_interval: this.config.interval,
     };
   }
 

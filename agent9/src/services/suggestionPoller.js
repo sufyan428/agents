@@ -28,7 +28,7 @@ class SuggestionPoller {
       return `0 */${intervalSeconds / 60} * * * *`;
     }
     throw new Error(
-      `polling.interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`
+      `polling.interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`,
     );
   }
 

@@ -11,9 +11,8 @@ class SNMPMonitor {
     const startTime = Date.now();
     try {
       const versionStr = String(routerConfig.version || '2c').toLowerCase();
-      const snmpVersion = versionStr === '1' || versionStr === 'v1'
-        ? snmp.Versions.SNMPv1
-        : snmp.Versions.SNMPv2c;
+      const snmpVersion =
+        versionStr === '1' || versionStr === 'v1' ? snmp.Versions.SNMPv1 : snmp.Versions.SNMPv2c;
 
       const session = new snmp.Session({
         host: routerConfig.host,
@@ -21,7 +20,7 @@ class SNMPMonitor {
         community: routerConfig.community || 'public',
         version: snmpVersion,
         timeout: routerConfig.timeout || 5000,
-        retries: routerConfig.retries || 3
+        retries: routerConfig.retries || 3,
       });
 
       const normalizedOid = oid.startsWith('.') ? oid : `.${oid}`;
@@ -45,12 +44,12 @@ class SNMPMonitor {
       const duration = (Date.now() - startTime) / 1000;
       this.metrics.recordSnmpQueryDuration(routerConfig.host, oid, duration);
       this.metrics.recordSnmpQueryError(routerConfig.host, error.code || 'unknown');
-      
+
       this.logger.error(`SNMP query failed for ${routerConfig.host}`, {
         oid: oid,
-        error: error.message
+        error: error.message,
       });
-      
+
       throw error;
     }
   }
@@ -67,14 +66,14 @@ class SNMPMonitor {
         name: systemName[0]?.value?.toString() || 'Unknown',
         description: systemDescription[0]?.value?.toString() || 'Unknown',
         timestamp: new Date().toISOString(),
-        status: 'up'
+        status: 'up',
       };
     } catch (error) {
       return {
         host: routerConfig.host,
         status: 'down',
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
@@ -82,7 +81,7 @@ class SNMPMonitor {
   async checkHealth(routerConfig) {
     const startTime = Date.now();
     const routerType = routerConfig === this.config.primary ? 'primary' : 'backup';
-    
+
     try {
       const info = await this.getRouterInfo(routerConfig);
       const responseTime = (Date.now() - startTime) / 1000;
@@ -99,27 +98,27 @@ class SNMPMonitor {
         status: info.status,
         response_time: responseTime,
         method: 'snmp',
-        uptime: info.uptime
+        uptime: info.uptime,
       });
 
       return {
         success: info.status === 'up',
         responseTime,
-        data: info
+        data: info,
       };
     } catch (error) {
       const responseTime = (Date.now() - startTime) / 1000;
       this.metrics.updateResponseTime(routerType, 'snmp', responseTime);
-      
+
       this.logger.error(`SNMP health check failed for ${routerConfig.host}`, {
         error: error.message,
-        responseTime
+        responseTime,
       });
 
       return {
         success: false,
         responseTime,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -133,7 +132,7 @@ class SNMPMonitor {
       } catch (error) {
         results[oid] = null;
         this.logger.warn(`Failed to query OID ${oid} on ${routerConfig.host}`, {
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -142,10 +141,10 @@ class SNMPMonitor {
 
   async getInterfaceStats(routerConfig) {
     const interfaceOids = [
-      '1.3.6.1.2.1.2.2.1.10',  // Interface bytes in
-      '1.3.6.1.2.1.2.2.1.16'   // Interface bytes out
+      '1.3.6.1.2.1.2.2.1.10', // Interface bytes in
+      '1.3.6.1.2.1.2.2.1.16', // Interface bytes out
     ];
-    
+
     return await this.monitorMultipleOIDs(routerConfig, interfaceOids);
   }
 

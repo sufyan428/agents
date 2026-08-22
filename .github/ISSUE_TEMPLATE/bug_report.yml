@@ -1,6 +1,6 @@
 name: Bug report
 description: Something in the framework behaves incorrectly
-labels: ["bug", "needs-triage"]
+labels: ['bug', 'needs-triage']
 body:
   - type: markdown
     attributes:
@@ -57,7 +57,7 @@ body:
     id: node
     attributes:
       label: Node version
-      placeholder: "node --version"
+      placeholder: 'node --version'
     validations:
       required: true
 

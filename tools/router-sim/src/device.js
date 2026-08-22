@@ -51,15 +51,19 @@ class Interface {
   }
 
   /** IF-MIB ifOperStatus: 1 up, 2 down. */
-  get operStatus() { return this.operUp ? 1 : 2; }
-  get adminStatus() { return this.adminUp ? 1 : 2; }
+  get operStatus() {
+    return this.operUp ? 1 : 2;
+  }
+  get adminStatus() {
+    return this.adminUp ? 1 : 2;
+  }
 }
 
 class Device {
   constructor(opts = {}) {
     this.name = opts.name || 'sim-router-1';
-    this.description = opts.description
-      || 'Simulated Router, Router Agent Framework test fixture, Version 1.0';
+    this.description =
+      opts.description || 'Simulated Router, Router Agent Framework test fixture, Version 1.0';
     this.location = opts.location || 'Simulation';
     this.contact = opts.contact || 'router-agent-framework';
 

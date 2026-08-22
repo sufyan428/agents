@@ -15,7 +15,9 @@ function fakeLlm(text = 'The primary router is unreachable; everything else foll
     calls,
     async complete(system, user) {
       calls.push({ system, user });
-      return text === null ? null : { text, usage: { inputTokens: 10, outputTokens: 5 }, model: 'fake' };
+      return text === null
+        ? null
+        : { text, usage: { inputTokens: 10, outputTokens: 5 }, model: 'fake' };
     },
   };
 }
@@ -27,10 +29,20 @@ const incident = (over = {}) => ({
   confidence: 0.85,
   simulated: false,
   reasoning: 'device_unreachable is the deepest finding in this cluster.',
-  rootCause: { agent: 'agent2-resilience', kind: 'device_unreachable', title: 'Device unreachable', severity: 'critical' },
+  rootCause: {
+    agent: 'agent2-resilience',
+    kind: 'device_unreachable',
+    title: 'Device unreachable',
+    severity: 'critical',
+  },
   symptoms: [
     { agent: 'agent1-monitoring', kind: 'snmp_timeout', title: 'SNMP timeout', severity: 'high' },
-    { agent: 'agent4-performance', kind: 'latency_high', title: 'Latency high', severity: 'medium' },
+    {
+      agent: 'agent4-performance',
+      kind: 'latency_high',
+      title: 'Latency high',
+      severity: 'medium',
+    },
   ],
   ...over,
 });
@@ -49,7 +61,10 @@ test('an incident is narrated and the deterministic result carried through verba
 
   const r = e.getLatestResult();
   assert.ok(r, 'should produce a result');
-  assert.equal(r.narrative, 'The primary router is unreachable; everything else follows from that.');
+  assert.equal(
+    r.narrative,
+    'The primary router is unreachable; everything else follows from that.',
+  );
   // The computed part must survive alongside the prose, so a consumer can see
   // what was derived versus what was written.
   assert.equal(r.incidents[0].rootCause.kind, 'device_unreachable');
@@ -71,11 +86,15 @@ test('a changed incident set is narrated again', async () => {
   const llm = fakeLlm();
   const e = engineWith([incident()], llm);
   await e.tick();
-  e.collector.fetchIncidents = async () => [incident({ symptoms: [
-    { agent: 'a', kind: 'x', title: 'X', severity: 'low' },
-    { agent: 'b', kind: 'y', title: 'Y', severity: 'low' },
-    { agent: 'c', kind: 'z', title: 'Z', severity: 'low' },
-  ] })];
+  e.collector.fetchIncidents = async () => [
+    incident({
+      symptoms: [
+        { agent: 'a', kind: 'x', title: 'X', severity: 'low' },
+        { agent: 'b', kind: 'y', title: 'Y', severity: 'low' },
+        { agent: 'c', kind: 'z', title: 'Z', severity: 'low' },
+      ],
+    }),
+  ];
   await e.tick();
   assert.equal(llm.calls.length, 2);
 });

@@ -9,7 +9,7 @@ const logger = require('./logger');
 class PrometheusExporter {
   constructor() {
     this.register = new client.Registry();
-    
+
     // Default metrics
     client.collectDefaultMetrics({ register: this.register });
 
@@ -19,56 +19,56 @@ class PrometheusExporter {
         name: 'router_cpu_utilization_percent',
         help: 'Router CPU utilization percentage',
         labelNames: ['router', 'ip'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       memoryUtilization: new client.Gauge({
         name: 'router_memory_utilization_percent',
         help: 'Router memory utilization percentage',
         labelNames: ['router', 'ip'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       temperature: new client.Gauge({
         name: 'router_temperature_celsius',
         help: 'Router temperature in Celsius',
         labelNames: ['router', 'ip', 'sensor'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       bandwidthIn: new client.Gauge({
         name: 'router_bandwidth_in_bytes',
         help: 'Router incoming bandwidth in bytes',
         labelNames: ['router', 'ip', 'interface'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       bandwidthOut: new client.Gauge({
         name: 'router_bandwidth_out_bytes',
         help: 'Router outgoing bandwidth in bytes',
         labelNames: ['router', 'ip', 'interface'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       latency: new client.Gauge({
         name: 'router_latency_milliseconds',
         help: 'Router latency in milliseconds',
         labelNames: ['router', 'ip', 'target'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       packetLoss: new client.Gauge({
         name: 'router_packet_loss_percent',
         help: 'Router packet loss percentage',
         labelNames: ['router', 'ip'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       interfaceErrors: new client.Counter({
         name: 'router_interface_errors_total',
         help: 'Total router interface errors',
         labelNames: ['router', 'ip', 'interface', 'direction'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       failedLogins: new client.Counter({
@@ -76,22 +76,22 @@ class PrometheusExporter {
         help: 'Total failed login attempts',
         // No `ip` label - see incrementFailedLogins for why.
         labelNames: ['router', 'known'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       uptime: new client.Gauge({
         name: 'router_uptime_seconds',
         help: 'Router uptime in seconds',
         labelNames: ['router', 'ip'],
-        registers: [this.register]
+        registers: [this.register],
       }),
 
       alertsTriggered: new client.Counter({
         name: 'monitoring_alerts_triggered_total',
         help: 'Total monitoring alerts triggered',
         labelNames: ['router', 'severity', 'metric'],
-        registers: [this.register]
-      })
+        registers: [this.register],
+      }),
     };
 
     logger.info('Prometheus exporter initialized');
@@ -144,7 +144,12 @@ class PrometheusExporter {
    * Increment interface errors counter
    */
   incrementInterfaceErrors(routerName, ip, interfaceName, direction) {
-    this.metrics.interfaceErrors.inc({ router: routerName, ip, interface: interfaceName, direction });
+    this.metrics.interfaceErrors.inc({
+      router: routerName,
+      ip,
+      interface: interfaceName,
+      direction,
+    });
   }
 
   /**

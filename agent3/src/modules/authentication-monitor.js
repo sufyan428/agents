@@ -1,6 +1,6 @@
 /**
  * Authentication Monitoring Module
- * 
+ *
  * Monitors authentication events to detect:
  * - Failed login attempts
  * - Brute force attacks
@@ -60,7 +60,6 @@ class AuthenticationMonitor {
       else if (this.isPrivilegeEscalation(message)) {
         this.handlePrivilegeEscalation(sourceIp, username, syslogData);
       }
-
     } catch (error) {
       this.logger.error('Error processing authentication syslog message:', error);
     }
@@ -87,7 +86,7 @@ class AuthenticationMonitor {
     // Remove timestamps outside the time window
     const timeWindowMs = this.config.time_window_seconds * 1000;
     attemptRecord.timestamps = attemptRecord.timestamps.filter(
-      timestamp => now - timestamp <= timeWindowMs
+      (timestamp) => now - timestamp <= timeWindowMs,
     );
     attemptRecord.count = attemptRecord.timestamps.length;
 
@@ -98,7 +97,7 @@ class AuthenticationMonitor {
       source_ip: sourceIp,
       username: username,
       attempt_count: attemptRecord.count,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Check if threshold exceeded
@@ -110,7 +109,7 @@ class AuthenticationMonitor {
     if (attemptRecord.count >= this.config.lockout_threshold) {
       this.handleAccountLockout(username, {
         ...syslogData,
-        reason: 'exceeded_max_attempts'
+        reason: 'exceeded_max_attempts',
       });
     }
   }
@@ -124,7 +123,7 @@ class AuthenticationMonitor {
       this.logger.warn('Successful login from previously suspicious IP', {
         source_ip: sourceIp,
         username: username,
-        warning: 'IP was flagged for suspicious activity'
+        warning: 'IP was flagged for suspicious activity',
       });
 
       this.alertDispatcher.dispatchAlert({
@@ -136,8 +135,8 @@ class AuthenticationMonitor {
           source_ip: sourceIp,
           username: username,
           previous_suspicious_activity: true,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -151,7 +150,7 @@ class AuthenticationMonitor {
     this.logger.info('Successful login attempt', {
       source_ip: sourceIp,
       username: username,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -166,7 +165,7 @@ class AuthenticationMonitor {
       username: username,
       attempt_count: attemptCount,
       severity: severity,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Add to suspicious IPs
@@ -187,11 +186,12 @@ class AuthenticationMonitor {
         attempt_count: attemptCount,
         time_window_seconds: this.config.time_window_seconds,
         threshold: this.config.max_failed_attempts,
-        recommended_action: severity === 'critical' 
-          ? 'Immediately block IP address and notify security team'
-          : 'Monitor closely and consider temporary IP block',
-        timestamp: new Date().toISOString()
-      }
+        recommended_action:
+          severity === 'critical'
+            ? 'Immediately block IP address and notify security team'
+            : 'Monitor closely and consider temporary IP block',
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 
@@ -204,7 +204,7 @@ class AuthenticationMonitor {
     this.logger.error('Account lockout detected', {
       username: username,
       reason: reason,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Add to locked accounts set
@@ -223,9 +223,10 @@ class AuthenticationMonitor {
       details: {
         username: username,
         reason: reason,
-        recommended_action: 'Verify if lockout was legitimate. If not, investigate potential breach.',
-        timestamp: new Date().toISOString()
-      }
+        recommended_action:
+          'Verify if lockout was legitimate. If not, investigate potential breach.',
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 
@@ -237,7 +238,7 @@ class AuthenticationMonitor {
       source_ip: sourceIp,
       username: username,
       message: syslogData.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Record threat
@@ -257,8 +258,8 @@ class AuthenticationMonitor {
         username: username,
         message: syslogData.message,
         recommended_action: 'Immediate investigation required. Consider blocking IP.',
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 
@@ -270,7 +271,7 @@ class AuthenticationMonitor {
       source_ip: sourceIp,
       username: username,
       message: syslogData.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Record threat
@@ -287,8 +288,8 @@ class AuthenticationMonitor {
         username: username,
         message: syslogData.message,
         recommended_action: 'Critical: Immediate security investigation required',
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 
@@ -304,10 +305,10 @@ class AuthenticationMonitor {
       /invalid\s+password/i,
       /incorrect\s+password/i,
       /access\s+denied/i,
-      /authentication\s+failure/i
+      /authentication\s+failure/i,
     ];
 
-    return failedPatterns.some(pattern => pattern.test(message));
+    return failedPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -319,10 +320,10 @@ class AuthenticationMonitor {
       /login\s+successful/i,
       /authentication\s+successful/i,
       /session\s+opened/i,
-      /user\s+logged\s+in/i
+      /user\s+logged\s+in/i,
     ];
 
-    return successPatterns.some(pattern => pattern.test(message));
+    return successPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -334,10 +335,10 @@ class AuthenticationMonitor {
       /account\s+disabled/i,
       /user\s+locked/i,
       /too\s+many\s+failed\s+attempts/i,
-      /lockout\s+triggered/i
+      /lockout\s+triggered/i,
     ];
 
-    return lockoutPatterns.some(pattern => pattern.test(message));
+    return lockoutPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -350,10 +351,10 @@ class AuthenticationMonitor {
       /permission\s+denied/i,
       /security\s+violation/i,
       /invalid\s+user/i,
-      /unknown\s+user/i
+      /unknown\s+user/i,
     ];
 
-    return unauthorizedPatterns.some(pattern => pattern.test(message));
+    return unauthorizedPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -366,10 +367,10 @@ class AuthenticationMonitor {
       /su\s+attempt/i,
       /root\s+access/i,
       /administrative\s+access/i,
-      /elevated\s+privileges/i
+      /elevated\s+privileges/i,
     ];
 
-    return escalationPatterns.some(pattern => pattern.test(message));
+    return escalationPatterns.some((pattern) => pattern.test(message));
   }
 
   /**
@@ -391,7 +392,7 @@ class AuthenticationMonitor {
       /username\s*[:=]\s*(\S+)/i,
       /for\s+user\s+(\S+)/i,
       /invalid\s+user\s+(\S+)/i,
-      /from\s+(\S+)\s+port/i
+      /from\s+(\S+)\s+port/i,
     ];
 
     for (const pattern of patterns) {
@@ -414,7 +415,7 @@ class AuthenticationMonitor {
     for (const [key, attemptRecord] of this.failedAttempts.entries()) {
       // Remove timestamps outside the time window
       attemptRecord.timestamps = attemptRecord.timestamps.filter(
-        timestamp => now - timestamp <= timeWindowMs
+        (timestamp) => now - timestamp <= timeWindowMs,
       );
 
       // Remove record if no recent attempts
@@ -426,7 +427,7 @@ class AuthenticationMonitor {
     }
 
     this.logger.debug('Cleaned up old authentication records', {
-      remaining_records: this.failedAttempts.size
+      remaining_records: this.failedAttempts.size,
     });
   }
 
@@ -441,12 +442,12 @@ class AuthenticationMonitor {
           source_ip: sourceIp,
           username: username,
           count: record.count,
-          timestamps: record.timestamps
+          timestamps: record.timestamps,
         };
       }),
       locked_accounts: Array.from(this.lockedAccounts),
       suspicious_ips: Array.from(this.suspiciousIps),
-      total_failed_attempts: this.failedAttempts.size
+      total_failed_attempts: this.failedAttempts.size,
     };
   }
 

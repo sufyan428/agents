@@ -75,7 +75,9 @@ export interface AgentServer {
 
 export function createServer(opts: ServerOptions): AgentServer {
   const {
-    agent, logger, port,
+    agent,
+    logger,
+    port,
     host = '127.0.0.1',
     healthPath = '/health',
     metricsPath = '/metrics',
@@ -137,7 +139,9 @@ export function createServer(opts: ServerOptions): AgentServer {
 
     if (!opts.authToken) {
       logger.warn('Rejected a mutating request: no AGENT_API_TOKEN is configured', {
-        method: req.method, path: req.path, correlationId: req.correlationId,
+        method: req.method,
+        path: req.path,
+        correlationId: req.correlationId,
       });
       res.status(503).json({
         success: false,
@@ -150,7 +154,10 @@ export function createServer(opts: ServerOptions): AgentServer {
     const provided = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
     if (!provided || !tokensMatch(provided, opts.authToken)) {
       logger.warn('Rejected a mutating request: bad or missing token', {
-        method: req.method, path: req.path, ip: req.ip, correlationId: req.correlationId,
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        correlationId: req.correlationId,
       });
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
@@ -186,36 +193,47 @@ export function createServer(opts: ServerOptions): AgentServer {
         res.status(404).json({ success: false, error: 'Not found', path: req.path });
       });
 
-      app.use((err: Error & { status?: number; statusCode?: number }, req: Request, res: Response, _next: NextFunction) => {
-        const status = err.status ?? err.statusCode ?? 500;
+      app.use(
+        (
+          err: Error & { status?: number; statusCode?: number },
+          req: Request,
+          res: Response,
+          _next: NextFunction,
+        ) => {
+          const status = err.status ?? err.statusCode ?? 500;
 
-        // Client errors (bad JSON, oversized body) are the caller's to fix, so
-        // the status has to survive - a flat 500 tells them nothing. The
-        // message is still generic; only the status class is disclosed.
-        if (status >= 400 && status < 500) {
-          logger.warn(`Rejected request: ${err.message}`, {
-            status, path: req.path, correlationId: req.correlationId,
-          });
-          res.status(status).json({
-            success: false,
-            error: status === 413 ? 'Payload too large' : 'Bad request',
+          // Client errors (bad JSON, oversized body) are the caller's to fix, so
+          // the status has to survive - a flat 500 tells them nothing. The
+          // message is still generic; only the status class is disclosed.
+          if (status >= 400 && status < 500) {
+            logger.warn(`Rejected request: ${err.message}`, {
+              status,
+              path: req.path,
+              correlationId: req.correlationId,
+            });
+            res.status(status).json({
+              success: false,
+              error: status === 413 ? 'Payload too large' : 'Bad request',
+              correlationId: req.correlationId,
+            });
+            return;
+          }
+
+          // Server errors: log the detail, return an opaque message plus the
+          // correlation id, so an operator can find the log line without the
+          // client learning internal paths or stack contents.
+          logger.error(`Unhandled error: ${err.message}`, {
+            stack: err.stack,
+            path: req.path,
             correlationId: req.correlationId,
           });
-          return;
-        }
-
-        // Server errors: log the detail, return an opaque message plus the
-        // correlation id, so an operator can find the log line without the
-        // client learning internal paths or stack contents.
-        logger.error(`Unhandled error: ${err.message}`, {
-          stack: err.stack, path: req.path, correlationId: req.correlationId,
-        });
-        res.status(500).json({
-          success: false,
-          error: 'Internal server error',
-          correlationId: req.correlationId,
-        });
-      });
+          res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            correlationId: req.correlationId,
+          });
+        },
+      );
 
       return new Promise((resolve, reject) => {
         server = app.listen(port, host, () => {
@@ -329,8 +347,11 @@ export function installShutdown(opts: ShutdownOptions): void {
   // rejection - often a transient device timeout - causes more downtime than
   // it prevents.
   process.on('unhandledRejection', (reason) => {
-    logger.error(`Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`, {
-      stack: reason instanceof Error ? reason.stack : undefined,
-    });
+    logger.error(
+      `Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`,
+      {
+        stack: reason instanceof Error ? reason.stack : undefined,
+      },
+    );
   });
 }

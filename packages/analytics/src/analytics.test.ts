@@ -1,11 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  Ewma, RollingMad, Baseline, BaselineSet, hourOfWeek,
-  Hysteresis, FlapDetector,
-  percentile, rfc3550Jitter, latencyStats, analyseLoss, forecastSaturation,
-  SlidingWindowCounter, PortScanDetector,
-  correlate, suppressibleFindingIds, type CorrelatableFinding,
+  Ewma,
+  RollingMad,
+  Baseline,
+  BaselineSet,
+  hourOfWeek,
+  Hysteresis,
+  FlapDetector,
+  percentile,
+  rfc3550Jitter,
+  latencyStats,
+  analyseLoss,
+  forecastSaturation,
+  SlidingWindowCounter,
+  PortScanDetector,
+  correlate,
+  suppressibleFindingIds,
+  type CorrelatableFinding,
 } from './index';
 
 /* -------------------------------- baseline ------------------------------- */
@@ -145,7 +157,13 @@ test('clearing needs a drop below clearAt, not merely below raiseAt', () => {
 });
 
 test('an inverted alarm handles metrics where low is bad', () => {
-  const h = new Hysteresis({ raiseAt: 10, clearAt: 25, raiseAfter: 1, clearAfter: 1, inverted: true });
+  const h = new Hysteresis({
+    raiseAt: 10,
+    clearAt: 25,
+    raiseAfter: 1,
+    clearAfter: 1,
+    inverted: true,
+  });
   h.update(5);
   assert.equal(h.state, 'raised');
   h.update(15);
@@ -162,16 +180,16 @@ test('a misconfigured band is rejected rather than never clearing', () => {
 test('flap detection fires after repeated transitions', () => {
   const f = new FlapDetector({ threshold: 4, windowMs: 60_000 });
   let now = 0;
-  assert.equal(f.recordTransition(now += 1000), false);
-  assert.equal(f.recordTransition(now += 1000), false);
-  assert.equal(f.recordTransition(now += 1000), false);
-  assert.equal(f.recordTransition(now += 1000), true, 'fourth transition is a flap');
+  assert.equal(f.recordTransition((now += 1000)), false);
+  assert.equal(f.recordTransition((now += 1000)), false);
+  assert.equal(f.recordTransition((now += 1000)), false);
+  assert.equal(f.recordTransition((now += 1000)), true, 'fourth transition is a flap');
 });
 
 test('transitions spread beyond the window are not a flap', () => {
   const f = new FlapDetector({ threshold: 4, windowMs: 60_000, cooldownMs: 1000 });
   let now = 0;
-  for (let i = 0; i < 6; i++) f.recordTransition(now += 120_000);
+  for (let i = 0; i < 6; i++) f.recordTransition((now += 120_000));
   assert.equal(f.isFlapping(now), false, 'one transition every two minutes is not flapping');
 });
 
@@ -208,8 +226,28 @@ test('RFC 3550 jitter smooths rather than reporting the last difference', () => 
 test('bursty loss is distinguished from scattered loss at the same rate', () => {
   // Both are 20% loss. Only one of them is an outage.
   // Both are exactly 4 losses in 20 probes.
-  const scattered = analyseLoss([false, true, false, false, true, false, false, true, false, false,
-                                 false, false, false, false, false, false, true, false, false, false]);
+  const scattered = analyseLoss([
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+  ]);
   const bursty = analyseLoss([...Array(16).fill(false), true, true, true, true]);
   assert.ok(Math.abs(scattered.lossRate - bursty.lossRate) < 0.01, 'same rate');
   assert.equal(scattered.bursty, false);
@@ -225,21 +263,39 @@ test('loss analysis handles no probes and no loss', () => {
 });
 
 test('saturation forecasting projects a rising trend', () => {
-  const samples = Array.from({ length: 12 }, (_, i) => ({ at: i * 60_000, utilisation: 0.5 + i * 0.02 }));
+  const samples = Array.from({ length: 12 }, (_, i) => ({
+    at: i * 60_000,
+    utilisation: 0.5 + i * 0.02,
+  }));
   const f = forecastSaturation(samples, 0.9);
-  assert.ok(f.secondsToSaturation !== null && f.secondsToSaturation > 0, `${f.secondsToSaturation}s`);
+  assert.ok(
+    f.secondsToSaturation !== null && f.secondsToSaturation > 0,
+    `${f.secondsToSaturation}s`,
+  );
   assert.equal(f.confident, true);
 });
 
 test('a flat or falling trend forecasts no saturation', () => {
-  const flat = forecastSaturation(Array.from({ length: 12 }, (_, i) => ({ at: i * 60_000, utilisation: 0.5 })), 0.9);
+  const flat = forecastSaturation(
+    Array.from({ length: 12 }, (_, i) => ({ at: i * 60_000, utilisation: 0.5 })),
+    0.9,
+  );
   assert.equal(flat.secondsToSaturation, null);
-  const falling = forecastSaturation(Array.from({ length: 12 }, (_, i) => ({ at: i * 60_000, utilisation: 0.8 - i * 0.01 })), 0.9);
+  const falling = forecastSaturation(
+    Array.from({ length: 12 }, (_, i) => ({ at: i * 60_000, utilisation: 0.8 - i * 0.01 })),
+    0.9,
+  );
   assert.equal(falling.secondsToSaturation, null);
 });
 
 test('too few samples means no confident forecast', () => {
-  const f = forecastSaturation([{ at: 0, utilisation: 0.5 }, { at: 1000, utilisation: 0.6 }], 0.9);
+  const f = forecastSaturation(
+    [
+      { at: 0, utilisation: 0.5 },
+      { at: 1000, utilisation: 0.6 },
+    ],
+    0.9,
+  );
   assert.equal(f.confident, false);
   assert.equal(f.secondsToSaturation, null);
 });
@@ -279,14 +335,23 @@ test('port scan detection counts distinct ports, not connections', () => {
 
 const at = (min: number) => new Date(Date.UTC(2026, 0, 1, 12, min)).toISOString();
 const f = (
-  id: string, agent: string, kind: string,
-  severity: CorrelatableFinding['severity'], minute: number,
-  entityId = '10.0.0.1', simulated = false,
+  id: string,
+  agent: string,
+  kind: string,
+  severity: CorrelatableFinding['severity'],
+  minute: number,
+  entityId = '10.0.0.1',
+  simulated = false,
 ): CorrelatableFinding => ({
-  id, agent, kind, severity,
+  id,
+  agent,
+  kind,
+  severity,
   entity: { type: 'router', id: entityId, name: entityId },
   title: `${kind} on ${entityId}`,
-  firstSeen: at(minute), lastSeen: at(minute), simulated,
+  firstSeen: at(minute),
+  lastSeen: at(minute),
+  simulated,
 });
 
 test('six findings from one outage become one incident with the right cause', () => {
@@ -340,10 +405,13 @@ test('cross-entity grouping is opt-in and reports lower confidence', () => {
 });
 
 test('findings far apart in time are separate incidents', () => {
-  const clusters = correlate([
-    f('1', 'agent1-monitoring', 'cpu_high', 'high', 0),
-    f('2', 'agent1-monitoring', 'cpu_high', 'high', 60),
-  ], { windowMs: 300_000 });
+  const clusters = correlate(
+    [
+      f('1', 'agent1-monitoring', 'cpu_high', 'high', 0),
+      f('2', 'agent1-monitoring', 'cpu_high', 'high', 60),
+    ],
+    { windowMs: 300_000 },
+  );
   assert.equal(clusters.length, 2);
 });
 

@@ -36,7 +36,7 @@ class NotificationPoller {
       return `0 */${intervalSeconds / 60} * * * *`;
     }
     throw new Error(
-      `notifications.poll_interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`
+      `notifications.poll_interval_seconds (${intervalSeconds}) must be under 60, or an exact multiple of 60`,
     );
   }
 
@@ -56,7 +56,7 @@ class NotificationPoller {
   async checkIncidents() {
     try {
       const res = await axios.get(`${this.config.sources.agent7_url}/api/incidents`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       const latest = res.data.latest;
       if (latest && latest.timestamp !== this.lastSeenIncidentId) {
@@ -73,7 +73,7 @@ class NotificationPoller {
   async checkReports() {
     try {
       const res = await axios.get(`${this.config.sources.agent8_url}/api/reports/latest`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       const latest = res.data.report;
       if (latest && latest.id !== this.lastSeenReportId) {
@@ -88,7 +88,12 @@ class NotificationPoller {
   }
 
   record(type, text) {
-    this.history.push({ id: `${type}-${Date.now()}`, type, timestamp: new Date().toISOString(), text });
+    this.history.push({
+      id: `${type}-${Date.now()}`,
+      type,
+      timestamp: new Date().toISOString(),
+      text,
+    });
     const maxSize = this.config.notifications.history_size;
     if (this.history.length > maxSize) {
       this.history.shift();

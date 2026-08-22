@@ -54,32 +54,20 @@ class ResilienceFailoverAgent {
         this.logger,
         this.metrics,
         this.snmpMonitor,
-        this.pingMonitor
+        this.pingMonitor,
       );
       this.logger.info('Heartbeat checker initialized');
 
       // Initialize failover manager
-      this.failoverManager = new FailoverManager(
-        this.config,
-        this.logger,
-        this.metrics
-      );
+      this.failoverManager = new FailoverManager(this.config, this.logger, this.metrics);
       this.logger.info('Failover manager initialized');
 
       // Initialize config sync
-      this.configSync = new ConfigSync(
-        this.config,
-        this.logger,
-        this.metrics
-      );
+      this.configSync = new ConfigSync(this.config, this.logger, this.metrics);
       this.logger.info('Configuration sync initialized');
 
       // Initialize syslog listener
-      this.syslogListener = new SyslogListener(
-        this.config,
-        this.logger,
-        this.metrics
-      );
+      this.syslogListener = new SyslogListener(this.config, this.logger, this.metrics);
       this.logger.info('Syslog listener initialized');
 
       // Initialize express server
@@ -90,7 +78,7 @@ class ResilienceFailoverAgent {
         this.heartbeatChecker,
         this.failoverManager,
         this.configSync,
-        this.syslogListener
+        this.syslogListener,
       );
       this.logger.info('Express server initialized');
 
@@ -102,13 +90,12 @@ class ResilienceFailoverAgent {
 
       this.logger.info('All components initialized successfully');
       return true;
-
     } catch (error) {
       console.error('Failed to initialize agent:', error.message);
       if (this.logger) {
         this.logger.error('Agent initialization failed', {
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
       }
       return false;
@@ -147,18 +134,17 @@ class ResilienceFailoverAgent {
         backup_router: this.config.backup.host,
         failover_enabled: this.config.failover.enabled,
         sync_enabled: this.config.sync.enabled,
-        metrics_port: this.config.metrics.port
+        metrics_port: this.config.metrics.port,
       });
 
       // Initial health check
       await this.performInitialHealthCheck();
 
       return true;
-
     } catch (error) {
       this.logger.error('Failed to start agent', {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
       throw error;
     }
@@ -166,29 +152,28 @@ class ResilienceFailoverAgent {
 
   async performInitialHealthCheck() {
     this.logger.info('Performing initial health check...');
-    
+
     try {
       // Check primary router
       const primaryHealth = await this.snmpMonitor.checkHealth(this.config.primary);
       this.logger.info('Primary router initial health', {
         status: primaryHealth.success ? 'healthy' : 'unhealthy',
-        response_time: primaryHealth.responseTime
+        response_time: primaryHealth.responseTime,
       });
 
       // Check backup router
       const backupHealth = await this.snmpMonitor.checkHealth(this.config.backup);
       this.logger.info('Backup router initial health', {
         status: backupHealth.success ? 'healthy' : 'unhealthy',
-        response_time: backupHealth.responseTime
+        response_time: backupHealth.responseTime,
       });
 
       // Update metrics
       this.metrics.updateRouterPrimaryStatus(primaryHealth.success);
       this.metrics.updateRouterBackupStatus(backupHealth.success);
-
     } catch (error) {
       this.logger.error('Initial health check failed', {
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -206,10 +191,9 @@ class ResilienceFailoverAgent {
 
       // Handle failover
       await this.failoverManager.handleFailover(event);
-
     } catch (error) {
       this.logger.error('Failed to handle failover event', {
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -239,16 +223,15 @@ class ResilienceFailoverAgent {
 
       this.isRunning = false;
       this.logger.info('Resilience & Failover Agent stopped');
-
     } catch (error) {
       this.logger.error('Error during agent shutdown', {
-        error: error.message
+        error: error.message,
       });
     }
   }
 
   sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -258,10 +241,10 @@ async function main() {
 
   try {
     const initialized = await agent.initialize();
-    
+
     if (initialized) {
       await agent.start();
-      
+
       // Handle graceful shutdown
       process.on('SIGTERM', async () => {
         agent.logger.info('SIGTERM received, shutting down...');
@@ -278,7 +261,7 @@ async function main() {
       process.on('uncaughtException', (error) => {
         agent.logger.error('Uncaught exception', {
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
         process.exit(1);
       });
@@ -286,7 +269,7 @@ async function main() {
       process.on('unhandledRejection', (reason, promise) => {
         agent.logger.error('Unhandled rejection', {
           reason: reason,
-          promise: promise
+          promise: promise,
         });
       });
 
@@ -296,7 +279,6 @@ async function main() {
       console.error('Failed to initialize agent');
       process.exit(1);
     }
-
   } catch (error) {
     console.error('Fatal error:', error.message);
     process.exit(1);

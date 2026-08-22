@@ -18,7 +18,7 @@ const ACTIONS = {
   restart_agent: { destructive: true, needsAgentName: true },
   stop_agent: { destructive: true, needsAgentName: true },
   start_agent: { destructive: true, needsAgentName: true },
-  chat: { destructive: false, needsAgentName: false }
+  chat: { destructive: false, needsAgentName: false },
 };
 
 class ActionExecutor {
@@ -73,19 +73,19 @@ class ActionExecutor {
       }
       case 'get_incidents': {
         const res = await axios.get(`${this.config.sources.agent7_url}/api/incidents`, {
-          timeout: this.config.sources.timeout_ms
+          timeout: this.config.sources.timeout_ms,
         });
         return res.data;
       }
       case 'get_reports': {
         const res = await axios.get(`${this.config.sources.agent8_url}/api/reports/latest`, {
-          timeout: this.config.sources.timeout_ms
+          timeout: this.config.sources.timeout_ms,
         });
         return res.data;
       }
       case 'get_suggestions': {
         const res = await axios.get(`${this.config.sources.agent9_url}/api/suggestions/latest`, {
-          timeout: this.config.sources.timeout_ms
+          timeout: this.config.sources.timeout_ms,
         });
         return res.data;
       }

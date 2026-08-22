@@ -99,7 +99,14 @@ export interface LossAnalysis {
 export function analyseLoss(probes: readonly boolean[]): LossAnalysis {
   const total = probes.length;
   if (total === 0) {
-    return { lossRate: 0, totalProbes: 0, lostProbes: 0, longestBurst: 0, burstCount: 0, bursty: false };
+    return {
+      lossRate: 0,
+      totalProbes: 0,
+      lostProbes: 0,
+      longestBurst: 0,
+      burstCount: 0,
+      bursty: false,
+    };
   }
 
   let lost = 0;
@@ -245,7 +252,10 @@ export class SlidingWindowCounter {
   }
 
   /** Keys at or above a count, busiest first. */
-  keysAtOrAbove(threshold: number, now: number = Date.now()): Array<{ key: string; count: number }> {
+  keysAtOrAbove(
+    threshold: number,
+    now: number = Date.now(),
+  ): Array<{ key: string; count: number }> {
     const out: Array<{ key: string; count: number }> = [];
     for (const key of [...this.events.keys()]) {
       const count = this.countFor(key, now);
@@ -254,8 +264,12 @@ export class SlidingWindowCounter {
     return out.sort((a, b) => b.count - a.count);
   }
 
-  get keyCount(): number { return this.events.size; }
-  reset(): void { this.events.clear(); }
+  get keyCount(): number {
+    return this.events.size;
+  }
+  reset(): void {
+    this.events.clear();
+  }
 }
 
 export interface PortScanVerdict {
@@ -308,5 +322,7 @@ export class PortScanDetector {
     };
   }
 
-  reset(): void { this.seen.clear(); }
+  reset(): void {
+    this.seen.clear();
+  }
 }

@@ -27,13 +27,13 @@ class AIReportingAgent {
       throw new Error(
         `No AI provider configured. This agent is optional and does nothing without one.
   Set AI_API_KEY and AI_MODEL (or the legacy OPENROUTER_API_KEY / ANTHROPIC_API_KEY)
-  in agent6/.env for the whole AI layer, or in this agent's own .env to run it alone.`
+  in agent6/.env for the whole AI layer, or in this agent's own .env to run it alone.`,
       );
     }
 
     logger.info(
       `AI provider: ${this.config.ai.provider} | model: ${this.config.ai.model} | ` +
-      `budget: ${this.config.ai.dailyCallBudget} calls/day`
+        `budget: ${this.config.ai.dailyCallBudget} calls/day`,
     );
     const llmClient = new AiClient(this.config.ai, logger);
     this.llmClient = llmClient;
@@ -42,11 +42,17 @@ class AIReportingAgent {
     // should surface here with an actionable message, not thirty minutes later
     // as an unexplained null on the first real poll.
     this.probeResult = null;
-    llmClient.probe().then((p) => {
-      this.probeResult = p;
-      if (p.ok) logger.info(`AI provider reachable: ${p.detail}`);
-      else logger.warn(`AI provider is NOT usable: ${p.detail}. This agent will produce no output.`);
-    }).catch((e) => { this.probeResult = { ok: false, detail: e.message }; });
+    llmClient
+      .probe()
+      .then((p) => {
+        this.probeResult = p;
+        if (p.ok) logger.info(`AI provider reachable: ${p.detail}`);
+        else
+          logger.warn(`AI provider is NOT usable: ${p.detail}. This agent will produce no output.`);
+      })
+      .catch((e) => {
+        this.probeResult = { ok: false, detail: e.message };
+      });
     const dataCollector = new DataCollector(this.config);
     this.reportGenerator = new ReportGenerator(this.config, llmClient, dataCollector);
     this.scheduler = new ReportScheduler(this.config, this.reportGenerator);
@@ -63,14 +69,25 @@ class AIReportingAgent {
       port,
       host,
       authToken: token,
-      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
       // The routes on this agent call a paid or rate-limited model endpoint.
       // Without a tight cap, anyone who can reach the port can drain the
       // operator's API quota or bill.
       expensiveRateLimit: { windowMs: 60_000, max: 6 },
       healthChecks: () => {
         const s = this.llmClient ? this.llmClient.stats() : null;
-        if (!s) return [{ name: 'ai_provider', status: 'degraded', message: 'not initialised', simulated: false }];
+        if (!s)
+          return [
+            {
+              name: 'ai_provider',
+              status: 'degraded',
+              message: 'not initialised',
+              simulated: false,
+            },
+          ];
 
         const disabled = s.budget.callsLimit === 0;
         const exhausted = !disabled && s.budget.callsUsed >= s.budget.callsLimit;
@@ -83,19 +100,22 @@ class AIReportingAgent {
         let message;
         if (probeFailed) message = `provider unusable: ${this.probeResult.detail}`;
         else if (disabled) message = 'AI disabled: daily call budget is 0';
-        else if (exhausted) message = `daily budget exhausted (${s.budget.callsUsed}/${s.budget.callsLimit} calls)`;
+        else if (exhausted)
+          message = `daily budget exhausted (${s.budget.callsUsed}/${s.budget.callsLimit} calls)`;
         else if (broken) message = `circuit breaker ${s.breaker}: ${s.lastError ?? 'unknown'}`;
 
-        return [{
-          name: 'ai_provider',
-          // Degraded, never unhealthy: the process is fine and the
-          // deterministic agents are unaffected. Only this agent's output is
-          // missing, and a supervisor must not restart it over that.
-          status: message ? 'degraded' : 'healthy',
-          message,
-          simulated: false,
-        }];
-      }
+        return [
+          {
+            name: 'ai_provider',
+            // Degraded, never unhealthy: the process is fine and the
+            // deterministic agents are unaffected. Only this agent's output is
+            // missing, and a supervisor must not restart it over that.
+            status: message ? 'degraded' : 'healthy',
+            message,
+            simulated: false,
+          },
+        ];
+      },
     });
 
     this.app = this.agentServer.app;
@@ -111,8 +131,8 @@ class AIReportingAgent {
       reportsGenerated: new promClient.Gauge({
         name: 'ai_reporting_reports_generated_total',
         help: 'Total reports generated',
-        registers: [this.register]
-      })
+        registers: [this.register],
+      }),
     };
   }
 
@@ -144,7 +164,9 @@ class AIReportingAgent {
       try {
         const report = await this.reportGenerator.generate('on-demand');
         if (!report) {
-          return res.status(502).json({ success: false, error: 'Report generation returned no content' });
+          return res
+            .status(502)
+            .json({ success: false, error: 'Report generation returned no content' });
         }
         res.json({ success: true, report });
       } catch (error) {
@@ -169,7 +191,7 @@ const agent = new AIReportingAgent();
 
 installShutdown({
   logger,
-  onShutdown: [() => agent.stop()]
+  onShutdown: [() => agent.stop()],
 });
 
 agent.start().catch((error) => {

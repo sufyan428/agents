@@ -23,7 +23,6 @@ export class AnthropicAdapter implements Adapter {
     if (this.client) return this.client;
     let Anthropic: any;
     try {
-       
       Anthropic = require('@anthropic-ai/sdk');
     } catch {
       throw new AiError(
@@ -79,7 +78,12 @@ export class AnthropicAdapter implements Adapter {
 
   private translate(err: Error & { status?: number; name?: string }): AiError {
     if (err.name === 'AbortError') {
-      return new AiError('timeout', `Request exceeded ${this.cfg.requestTimeoutMs}ms`, undefined, true);
+      return new AiError(
+        'timeout',
+        `Request exceeded ${this.cfg.requestTimeoutMs}ms`,
+        undefined,
+        true,
+      );
     }
     const status = err.status;
     if (status === 401) {

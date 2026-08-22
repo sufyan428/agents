@@ -1,8 +1,8 @@
 # Prometheus Configuration for Router Monitoring Agent
 
 global:
-  scrape_interval: 15s        # How often to scrape targets
-  evaluation_interval: 15s    # How often to evaluate rules
+  scrape_interval: 15s # How often to scrape targets
+  evaluation_interval: 15s # How often to evaluate rules
   external_labels:
     cluster: 'router-monitoring'
     environment: 'production'
@@ -34,7 +34,6 @@ scrape_configs:
       - targets: ['prometheus:9090']
         labels:
           service: 'prometheus'
-
 
   # Monitor Grafana (optional)
   - job_name: 'grafana'

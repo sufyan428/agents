@@ -11,7 +11,7 @@ class DataCollector {
       const res = await axios.post(
         `${this.config.sources.agent5_url}/api/compliance/check`,
         {},
-        { timeout: this.config.sources.timeout_ms }
+        { timeout: this.config.sources.timeout_ms },
       );
       return { reachable: true, data: res.data };
     } catch (error) {
@@ -23,7 +23,7 @@ class DataCollector {
   async getPerformanceHealth() {
     try {
       const res = await axios.get(`${this.config.sources.agent4_url}/health`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       return { reachable: true, data: res.data };
     } catch (error) {
@@ -35,7 +35,7 @@ class DataCollector {
   async getLatestIncident() {
     try {
       const res = await axios.get(`${this.config.sources.agent7_url}/api/incidents`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       return { reachable: true, data: res.data };
     } catch (error) {
@@ -51,7 +51,7 @@ class DataCollector {
   async findIssues() {
     const [compliance, performance] = await Promise.all([
       this.getComplianceViolations(),
-      this.getPerformanceHealth()
+      this.getPerformanceHealth(),
     ]);
 
     const violations = compliance.reachable
@@ -65,8 +65,12 @@ class DataCollector {
     return {
       hasIssues: violations.length > 0 || performanceAnomaly,
       violations,
-      performance: { reachable: performance.reachable, efficiencyScore, belowThreshold: performanceAnomaly },
-      compliance
+      performance: {
+        reachable: performance.reachable,
+        efficiencyScore,
+        belowThreshold: performanceAnomaly,
+      },
+      compliance,
     };
   }
 }

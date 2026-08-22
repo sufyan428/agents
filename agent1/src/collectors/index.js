@@ -8,5 +8,5 @@ const syslogCollector = require('./syslogCollector');
 
 module.exports = {
   snmpCollector,
-  syslogCollector
+  syslogCollector,
 };

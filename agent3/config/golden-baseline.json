@@ -8,17 +8,12 @@
     "system": {
       "hostname": "secure-router-01",
       "timezone": "UTC",
-      "ntp_servers": [
-        "time1.example.com",
-        "time2.example.com"
-      ]
+      "ntp_servers": ["time1.example.com", "time2.example.com"]
     },
     "interfaces": {
       "management": {
         "enabled": true,
-        "access_restrictions": [
-          "192.168.1.0/24"
-        ],
+        "access_restrictions": ["192.168.1.0/24"],
         "ssh_enabled": true,
         "telnet_enabled": false,
         "http_enabled": false,
@@ -126,18 +121,8 @@
       "log_level": "informational"
     },
     "services": {
-      "disabled_services": [
-        "telnet",
-        "http",
-        "ftp",
-        "tftp"
-      ],
-      "enabled_services": [
-        "ssh",
-        "https",
-        "snmp",
-        "ntp"
-      ]
+      "disabled_services": ["telnet", "http", "ftp", "tftp"],
+      "enabled_services": ["ssh", "https", "snmp", "ntp"]
     }
   }
 }

@@ -17,12 +17,12 @@ class Collector {
       timestamp: new Date().toISOString(),
       orchestrator: null,
       orchestratorReachable: false,
-      agents: {}
+      agents: {},
     };
 
     try {
       const res = await axios.get(`${this.config.orchestrator.base_url}/api/overview`, {
-        timeout: this.config.orchestrator.timeout_ms
+        timeout: this.config.orchestrator.timeout_ms,
       });
       snapshot.orchestrator = res.data.overview;
       snapshot.orchestratorReachable = true;
@@ -34,21 +34,21 @@ class Collector {
       this.config.agents.map(async (agent) => {
         try {
           const res = await axios.get(`http://localhost:${agent.port}/health`, {
-            timeout: this.config.orchestrator.timeout_ms
+            timeout: this.config.orchestrator.timeout_ms,
           });
           snapshot.agents[agent.name] = {
             reachable: true,
             port: agent.port,
-            health: res.data
+            health: res.data,
           };
         } catch (error) {
           snapshot.agents[agent.name] = {
             reachable: false,
             port: agent.port,
-            error: error.message
+            error: error.message,
           };
         }
-      })
+      }),
     );
 
     return snapshot;
@@ -87,7 +87,7 @@ class Collector {
     const disabled = new Set(
       Object.entries(snapshot.orchestrator?.agents || {})
         .filter(([, a]) => a.enabled === false)
-        .map(([name]) => name)
+        .map(([name]) => name),
     );
 
     for (const [name, agent] of Object.entries(snapshot.agents)) {

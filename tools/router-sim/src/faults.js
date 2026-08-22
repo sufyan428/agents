@@ -97,10 +97,15 @@ class FaultEngine {
       case 'interface_flap': {
         const iface = this.device.interfaceByIndex(p.interface);
         if (!iface) throw new Error(`No interface with index ${p.interface}`);
-        handle.restore = () => { iface.operUp = true; };
+        handle.restore = () => {
+          iface.operUp = true;
+        };
         let cycle = 0;
         const flap = () => {
-          if (cycle >= p.cycles) { this.clear(name); return; }
+          if (cycle >= p.cycles) {
+            this.clear(name);
+            return;
+          }
           cycle += 1;
           iface.operUp = false;
           this.emitSyslog(`%LINK-3-UPDOWN: Interface ${iface.name}, changed state to down`, 3);
@@ -117,7 +122,9 @@ class FaultEngine {
       case 'interface_down': {
         const iface = this.device.interfaceByIndex(p.interface);
         if (!iface) throw new Error(`No interface with index ${p.interface}`);
-        handle.restore = () => { iface.operUp = true; };
+        handle.restore = () => {
+          iface.operUp = true;
+        };
         iface.operUp = false;
         this.emitSyslog(`%LINK-3-UPDOWN: Interface ${iface.name}, changed state to down`, 3);
         later(() => this.clear(name), p.durationMs);
@@ -138,7 +145,9 @@ class FaultEngine {
       case 'interface_errors': {
         const iface = this.device.interfaceByIndex(p.interface);
         if (!iface) throw new Error(`No interface with index ${p.interface}`);
-        handle.restore = () => { iface.errorRate = 0; };
+        handle.restore = () => {
+          iface.errorRate = 0;
+        };
         iface.errorRate = p.errorsPerSec;
         later(() => this.clear(name), p.durationMs);
         break;
@@ -147,7 +156,9 @@ class FaultEngine {
       case 'traffic_surge': {
         const iface = this.device.interfaceByIndex(p.interface);
         if (!iface) throw new Error(`No interface with index ${p.interface}`);
-        handle.restore = () => { iface.loadFactor = 1; };
+        handle.restore = () => {
+          iface.loadFactor = 1;
+        };
         iface.loadFactor = p.factor;
         later(() => this.clear(name), p.durationMs);
         break;
@@ -157,11 +168,15 @@ class FaultEngine {
         const sources = Array.from({ length: p.sourceCount }, (_, i) => `10.0.0.${20 + i}`);
         let sent = 0;
         every(() => {
-          if (sent >= p.count) { this.clear(name); return; }
+          if (sent >= p.count) {
+            this.clear(name);
+            return;
+          }
           const src = sources[sent % sources.length];
           this.emitSyslog(
             `%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: admin] [Source: ${src}] ` +
-            `[localport: 22] [Reason: Login Authentication Failed]`, 4,
+              `[localport: 22] [Reason: Login Authentication Failed]`,
+            4,
           );
           sent += 1;
         }, p.intervalMs);
@@ -169,7 +184,9 @@ class FaultEngine {
       }
 
       case 'total_loss': {
-        handle.restore = () => { this.device.unreachable = false; };
+        handle.restore = () => {
+          this.device.unreachable = false;
+        };
         this.device.unreachable = true;
         later(() => this.clear(name), p.durationMs);
         break;
@@ -185,7 +202,10 @@ class FaultEngine {
   clear(name) {
     const handle = this.running.get(name);
     if (!handle) return { fault: name, active: false, cleared: false };
-    for (const t of handle.timers) { clearTimeout(t); clearInterval(t); }
+    for (const t of handle.timers) {
+      clearTimeout(t);
+      clearInterval(t);
+    }
     handle.restore();
     this.running.delete(name);
     this.device.activeFaults.delete(name);
@@ -213,7 +233,12 @@ class FaultEngine {
  * exercises every parser.
  */
 class SyslogEmitter {
-  constructor({ host = '127.0.0.1', ports = [5140, 5142, 5143, 5144], hostname = 'sim-router-1', logger = console } = {}) {
+  constructor({
+    host = '127.0.0.1',
+    ports = [5140, 5142, 5143, 5144],
+    hostname = 'sim-router-1',
+    logger = console,
+  } = {}) {
     this.host = host;
     this.ports = ports;
     this.hostname = hostname;
@@ -247,7 +272,11 @@ class SyslogEmitter {
 
   stop() {
     if (this.heartbeat) clearInterval(this.heartbeat);
-    try { this.socket.close(); } catch { /* already closed */ }
+    try {
+      this.socket.close();
+    } catch {
+      /* already closed */
+    }
   }
 }
 

@@ -18,12 +18,12 @@ class DataCollector {
       timestamp: new Date().toISOString(),
       orchestratorOverview: null,
       agent5Reports: {},
-      agent7Incidents: null
+      agent7Incidents: null,
     };
 
     try {
       const res = await axios.get(`${this.config.orchestrator.base_url}/api/overview`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       data.orchestratorOverview = res.data.overview;
     } catch (error) {
@@ -36,23 +36,25 @@ class DataCollector {
           const res = await axios.post(
             `${this.config.sources.agent5_url}/api/reports/generate`,
             { reportType },
-            { timeout: this.config.sources.timeout_ms }
+            { timeout: this.config.sources.timeout_ms },
           );
           data.agent5Reports[reportType] = res.data;
         } catch (error) {
           data.agent5Reports[reportType] = { error: error.message };
           logger.warn(`agent5 ${reportType} report unavailable: ${error.message}`);
         }
-      })
+      }),
     );
 
     try {
       const res = await axios.get(`${this.config.sources.agent7_url}/api/incidents`, {
-        timeout: this.config.sources.timeout_ms
+        timeout: this.config.sources.timeout_ms,
       });
       data.agent7Incidents = res.data;
     } catch (error) {
-      logger.info(`agent7 incidents unavailable (optional, likely disabled/no API key): ${error.message}`);
+      logger.info(
+        `agent7 incidents unavailable (optional, likely disabled/no API key): ${error.message}`,
+      );
     }
 
     return data;

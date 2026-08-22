@@ -3,9 +3,8 @@ const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 declareSimulated(
   'agent4.trafficDistribution',
   'Generates per-link traffic volumes rather than reading interface counters.',
-  'interface counter deltas from SNMP, or flow data'
+  'interface counter deltas from SNMP, or flow data',
 );
-
 
 class TrafficBalancer {
   constructor(config, logger) {
@@ -21,7 +20,7 @@ class TrafficBalancer {
       imbalance: 0,
       totalTraffic: 0,
       recommendation: null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     try {
@@ -46,10 +45,11 @@ class TrafficBalancer {
 
       this.previousAnalysis = metrics;
 
-      this.logger.info(`Traffic analysis: ${metrics.interfaces.length} interfaces, ` +
-                      `imbalance=${metrics.imbalance.toFixed(2)}%, ` +
-                      `recommendation=${metrics.recommendation?.type || 'none'}`);
-
+      this.logger.info(
+        `Traffic analysis: ${metrics.interfaces.length} interfaces, ` +
+          `imbalance=${metrics.imbalance.toFixed(2)}%, ` +
+          `recommendation=${metrics.recommendation?.type || 'none'}`,
+      );
     } catch (error) {
       this.logger.error(`Error analyzing traffic: ${error.message}`);
     }
@@ -73,7 +73,7 @@ class TrafficBalancer {
         inOctets: baseTraffic + variance,
         outOctets: baseTraffic + variance,
         status: 1,
-        maxBandwidth: 1000000000 // 1 Gbps
+        maxBandwidth: 1000000000, // 1 Gbps
       });
     }
 
@@ -85,16 +85,14 @@ class TrafficBalancer {
       return sum + iface.inOctets + iface.outOctets;
     }, 0);
 
-    const interfaceTraffic = interfaces.map(iface => ({
+    const interfaceTraffic = interfaces.map((iface) => ({
       ...iface,
       totalOctets: iface.inOctets + iface.outOctets,
-      percentage: totalTraffic > 0 
-        ? ((iface.inOctets + iface.outOctets) / totalTraffic * 100)
-        : 0
+      percentage: totalTraffic > 0 ? ((iface.inOctets + iface.outOctets) / totalTraffic) * 100 : 0,
     }));
 
     // Calculate imbalance (max - min percentage)
-    const percentages = interfaceTraffic.map(iface => iface.percentage);
+    const percentages = interfaceTraffic.map((iface) => iface.percentage);
     const maxPercent = Math.max(...percentages);
     const minPercent = Math.min(...percentages);
     const imbalance = maxPercent - minPercent;
@@ -102,7 +100,7 @@ class TrafficBalancer {
     return {
       interfaces: interfaceTraffic,
       totalTraffic: totalTraffic,
-      imbalance: imbalance
+      imbalance: imbalance,
     };
   }
 
@@ -117,17 +115,18 @@ class TrafficBalancer {
 
       return {
         type: 'rebalance_traffic',
-        description: `Traffic imbalance detected (${trafficData.imbalance.toFixed(1)}%). ` +
-                    `Rebalance from ${overloaded.name} (${overloaded.percentage.toFixed(1)}%) ` +
-                    `to ${underutilized.name} (${underutilized.percentage.toFixed(1)}%)`,
+        description:
+          `Traffic imbalance detected (${trafficData.imbalance.toFixed(1)}%). ` +
+          `Rebalance from ${overloaded.name} (${overloaded.percentage.toFixed(1)}%) ` +
+          `to ${underutilized.name} (${underutilized.percentage.toFixed(1)}%)`,
         severity: 'medium',
         details: {
           imbalance: trafficData.imbalance,
           overloadedInterface: overloaded.name,
           underutilizedInterface: underutilized.name,
-          suggestedAction: 'Adjust routing weights or enable ECMP'
+          suggestedAction: 'Adjust routing weights or enable ECMP',
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
 

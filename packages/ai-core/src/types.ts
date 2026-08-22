@@ -70,16 +70,16 @@ export interface CompletionResult {
 
 /** Why a completion did not happen. Callers branch on this, not on strings. */
 export type FailureReason =
-  | 'auth'          // bad or missing key - will not fix itself
-  | 'forbidden'     // key is valid but not entitled to this model or endpoint
-  | 'rate_limit'    // provider throttled us
+  | 'auth' // bad or missing key - will not fix itself
+  | 'forbidden' // key is valid but not entitled to this model or endpoint
+  | 'rate_limit' // provider throttled us
   | 'timeout'
-  | 'empty'         // 200 with no content, endemic to free tiers
-  | 'refused'       // model declined the request
-  | 'budget'        // local budget exhausted
-  | 'breaker_open'  // too many recent failures
-  | 'transport'     // network or DNS
-  | 'bad_response'  // provider returned something unparseable
+  | 'empty' // 200 with no content, endemic to free tiers
+  | 'refused' // model declined the request
+  | 'budget' // local budget exhausted
+  | 'breaker_open' // too many recent failures
+  | 'transport' // network or DNS
+  | 'bad_response' // provider returned something unparseable
   | 'unknown';
 
 export class AiError extends Error {

@@ -20,7 +20,7 @@ test('AlertManager should send alert', async () => {
     threshold: 75,
     timestamp: new Date().toISOString(),
     message: 'CPU usage warning',
-    details: 'CPU usage above warning threshold'
+    details: 'CPU usage above warning threshold',
   };
 
   const result = await alertManager.sendAlert(testAlert);
@@ -38,7 +38,7 @@ test('AlertManager should track alert history', () => {
     threshold: 90,
     timestamp: new Date().toISOString(),
     message: 'Memory critical alert',
-    details: 'Memory usage above critical threshold'
+    details: 'Memory usage above critical threshold',
   };
 
   alertManager.sendAlert(testAlert);
@@ -62,7 +62,7 @@ test('AlertManager should clear history', () => {
   const _initialStats = alertManager.getAlertStats();
   alertManager.clearHistory();
   const clearedStats = alertManager.getAlertStats();
-  
+
   assert.strictEqual(clearedStats.total, 0);
 });
 
@@ -75,7 +75,7 @@ test('AlertManager should format email alerts', () => {
     threshold: 70,
     timestamp: new Date().toISOString(),
     message: 'Temperature warning',
-    details: 'Temperature above warning threshold'
+    details: 'Temperature above warning threshold',
   };
 
   const emailText = alertManager.formatAlertEmail(testAlert);
@@ -92,7 +92,7 @@ test('AlertManager should format HTML email alerts', () => {
     threshold: 90,
     timestamp: new Date().toISOString(),
     message: 'Bandwidth critical',
-    details: 'Bandwidth usage critical'
+    details: 'Bandwidth usage critical',
   };
 
   const emailHTML = alertManager.formatAlertHTMLEmail(testAlert);

@@ -1,6 +1,6 @@
 /**
  * Alert Dispatcher Module
- * 
+ *
  * Dispatches security alerts through multiple channels:
  * - Console output
  * - Log files
@@ -14,7 +14,7 @@ const axiosRetry = require('axios-retry').default || require('axios-retry');
 // Configure axios retry
 axiosRetry(axios, {
   retries: 3,
-  retryDelay: axiosRetry.exponentialDelay
+  retryDelay: axiosRetry.exponentialDelay,
 });
 
 class AlertDispatcher {
@@ -70,9 +70,8 @@ class AlertDispatcher {
       this.logger.info('Alert dispatched successfully', {
         alert_id: alert.id,
         type: alert.type,
-        severity: alert.severity
+        severity: alert.severity,
       });
-
     } catch (error) {
       this.logger.error('Error dispatching alert:', error);
       this.metrics.recordAlertDispatch('error', 'failed');
@@ -84,7 +83,7 @@ class AlertDispatcher {
    */
   validateAlert(alert) {
     const required = ['type', 'severity', 'title', 'description', 'details'];
-    
+
     for (const field of required) {
       if (!alert[field]) {
         throw new Error(`Alert missing required field: ${field}`);
@@ -112,7 +111,7 @@ class AlertDispatcher {
       critical: '🚨',
       high: '⚠️',
       medium: 'ℹ️',
-      low: '📋'
+      low: '📋',
     };
 
     const icon = severityIcons[alert.severity.toLowerCase()] || '📋';
@@ -136,7 +135,7 @@ class AlertDispatcher {
    */
   dispatchToLog(alert) {
     const logLevel = this.getLogLevelForSeverity(alert.severity);
-    
+
     this.logger.log(logLevel, 'Security Alert', {
       alert_id: alert.id,
       timestamp: alert.timestamp,
@@ -144,7 +143,7 @@ class AlertDispatcher {
       severity: alert.severity,
       title: alert.title,
       description: alert.description,
-      details: alert.details
+      details: alert.details,
     });
   }
 
@@ -156,7 +155,7 @@ class AlertDispatcher {
       critical: 'error',
       high: 'error',
       medium: 'warn',
-      low: 'info'
+      low: 'info',
     };
 
     return levelMap[severity.toLowerCase()] || 'info';
@@ -185,8 +184,8 @@ class AlertDispatcher {
         source: {
           name: 'security-id-agent',
           instance: process.env.AGENT_INSTANCE || 'unknown',
-          router: process.env.ROUTER_HOST || 'unknown'
-        }
+          router: process.env.ROUTER_HOST || 'unknown',
+        },
       };
 
       const response = await axios({
@@ -194,19 +193,18 @@ class AlertDispatcher {
         url: webhookConfig.url,
         headers: webhookConfig.headers || {},
         data: payload,
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (response.status >= 200 && response.status < 300) {
         this.logger.debug('Webhook alert sent successfully', {
           alert_id: alert.id,
-          status: response.status
+          status: response.status,
         });
         this.metrics.recordAlertDispatch('webhook', 'success');
       } else {
         throw new Error(`Webhook returned status ${response.status}`);
       }
-
     } catch (error) {
       this.logger.error('Failed to send webhook alert:', error);
       this.metrics.recordAlertDispatch('webhook', 'failed');
@@ -234,16 +232,16 @@ class AlertDispatcher {
     let filtered = [...this.alertHistory];
 
     if (filters.type) {
-      filtered = filtered.filter(alert => alert.type === filters.type);
+      filtered = filtered.filter((alert) => alert.type === filters.type);
     }
 
     if (filters.severity) {
-      filtered = filtered.filter(alert => alert.severity === filters.severity);
+      filtered = filtered.filter((alert) => alert.severity === filters.severity);
     }
 
     if (filters.since) {
       const sinceDate = new Date(filters.since);
-      filtered = filtered.filter(alert => new Date(alert.timestamp) >= sinceDate);
+      filtered = filtered.filter((alert) => new Date(alert.timestamp) >= sinceDate);
     }
 
     if (filters.limit) {
@@ -261,7 +259,7 @@ class AlertDispatcher {
       total: this.alertHistory.length,
       by_severity: {},
       by_type: {},
-      recent_alerts: []
+      recent_alerts: [],
     };
 
     for (const alert of this.alertHistory) {

@@ -6,7 +6,7 @@ function makeExecutor() {
   const config = {
     orchestrator: { base_url: 'http://localhost:8080', timeout_ms: 1000 },
     sources: { agent7_url: '', agent8_url: '', agent9_url: '', timeout_ms: 1000 },
-    known_agents: ['agent1-monitoring', 'agent2-resilience']
+    known_agents: ['agent1-monitoring', 'agent2-resilience'],
   };
   return new ActionExecutor(config);
 }

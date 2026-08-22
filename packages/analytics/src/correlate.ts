@@ -51,7 +51,11 @@ export interface Cluster {
 }
 
 const SEVERITY_RANK: Record<CorrelatableFinding['severity'], number> = {
-  info: 0, low: 1, medium: 2, high: 3, critical: 4,
+  info: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
 };
 
 /**
@@ -65,13 +69,33 @@ const SEVERITY_RANK: Record<CorrelatableFinding['severity'], number> = {
  * where a naive implementation - and an unguided model - lands.
  */
 const CAUSAL_LAYER: Array<{ layer: number; kinds: RegExp; label: string }> = [
-  { layer: 0, kinds: /^(device_unreachable|power|snmp_timeout|icmp_total_loss|host_down)/, label: 'device reachability' },
-  { layer: 1, kinds: /^(interface_down|link_down|interface_flap|carrier_loss)/, label: 'link state' },
-  { layer: 2, kinds: /^(failover|failback|heartbeat_missed|route_change|bgp_|vrrp_)/, label: 'protocol and failover' },
+  {
+    layer: 0,
+    kinds: /^(device_unreachable|power|snmp_timeout|icmp_total_loss|host_down)/,
+    label: 'device reachability',
+  },
+  {
+    layer: 1,
+    kinds: /^(interface_down|link_down|interface_flap|carrier_loss)/,
+    label: 'link state',
+  },
+  {
+    layer: 2,
+    kinds: /^(failover|failback|heartbeat_missed|route_change|bgp_|vrrp_)/,
+    label: 'protocol and failover',
+  },
   { layer: 3, kinds: /^(cpu_|memory_|resource_|temperature_)/, label: 'device resources' },
-  { layer: 4, kinds: /^(latency_|jitter_|packet_loss|bandwidth_|qos_|throughput_)/, label: 'performance' },
+  {
+    layer: 4,
+    kinds: /^(latency_|jitter_|packet_loss|bandwidth_|qos_|throughput_)/,
+    label: 'performance',
+  },
   { layer: 5, kinds: /^(auth_failure|port_scan|intrusion|acl_|security_)/, label: 'security' },
-  { layer: 6, kinds: /^(policy_|compliance_|config_drift|backup_|firmware_)/, label: 'policy and compliance' },
+  {
+    layer: 6,
+    kinds: /^(policy_|compliance_|config_drift|backup_|firmware_)/,
+    label: 'policy and compliance',
+  },
 ];
 
 function layerOf(kind: string): { layer: number; label: string } {
@@ -120,7 +144,11 @@ export function correlate(
     for (const [key, members] of groups) {
       if (!key.startsWith(`${entityKey}@`)) continue;
       const last = Math.max(...members.map((m) => new Date(m.lastSeen).getTime()));
-      if (at - last <= windowMs) { members.push(f); joined = true; break; }
+      if (at - last <= windowMs) {
+        members.push(f);
+        joined = true;
+        break;
+      }
     }
     if (!joined) groups.set(`${entityKey}@${at}`, [f]);
   }
@@ -130,9 +158,7 @@ export function correlate(
   if (crossEntity) clusters = mergeOverlapping(clusters, windowMs);
 
   return clusters.sort(
-    (a, b) =>
-      SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
-      b.all.length - a.all.length,
+    (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.all.length - a.all.length,
   );
 }
 
@@ -183,7 +209,9 @@ function explain(
   if (symptoms.length === 0) {
     return `Single finding from ${root.agent}; nothing else correlates with it in the window.`;
   }
-  const downstream = [...new Set(symptoms.map((s) => layerOf(s.kind).label))].filter((l) => l !== layerLabel);
+  const downstream = [...new Set(symptoms.map((s) => layerOf(s.kind).label))].filter(
+    (l) => l !== layerLabel,
+  );
   const parts = [
     `"${root.title}" is the deepest finding in this cluster (${layerLabel}), so it is the probable cause.`,
     `${symptoms.length} other finding${symptoms.length === 1 ? '' : 's'} across ${agents.length} agent${agents.length === 1 ? '' : 's'} occurred in the same window on the same entity`,
@@ -201,7 +229,11 @@ function explain(
  * everything sits at one layer, which usually means coincidence rather than
  * causation.
  */
-function confidenceOf(root: CorrelatableFinding, symptoms: CorrelatableFinding[], agentCount: number): number {
+function confidenceOf(
+  root: CorrelatableFinding,
+  symptoms: CorrelatableFinding[],
+  agentCount: number,
+): number {
   if (symptoms.length === 0) return 0.5;
 
   let score = 0.4;
@@ -235,7 +267,11 @@ function mergeOverlapping(clusters: Cluster[], windowMs: number): Cluster[] {
         !used.has(o.id) &&
         Math.abs(new Date(o.startedAt).getTime() - new Date(c.startedAt).getTime()) <= windowMs,
     );
-    if (overlapping.length === 0) { out.push(c); used.add(c.id); continue; }
+    if (overlapping.length === 0) {
+      out.push(c);
+      used.add(c.id);
+      continue;
+    }
 
     const members = [c, ...overlapping];
     for (const m of members) used.add(m.id);
@@ -258,7 +294,10 @@ function mergeOverlapping(clusters: Cluster[], windowMs: number): Cluster[] {
  * The threshold matters. Suppressing on a weak grouping hides real independent
  * problems, which is a worse failure than sending an extra alert.
  */
-export function suppressibleFindingIds(clusters: readonly Cluster[], minConfidence = 0.6): Set<string> {
+export function suppressibleFindingIds(
+  clusters: readonly Cluster[],
+  minConfidence = 0.6,
+): Set<string> {
   const ids = new Set<string>();
   for (const c of clusters) {
     if (c.confidence < minConfidence) continue;

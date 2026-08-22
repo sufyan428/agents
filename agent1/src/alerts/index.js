@@ -6,5 +6,5 @@
 const alertManager = require('./alertManager');
 
 module.exports = {
-  alertManager
+  alertManager,
 };

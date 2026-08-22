@@ -73,7 +73,7 @@ class SyslogListener {
     const timestamp = new Date().toISOString();
 
     const parsedMessage = this.parseSyslogMessage(message);
-    
+
     const syslogEntry = {
       timestamp,
       source: rinfo.address,
@@ -84,17 +84,19 @@ class SyslogListener {
       hostname: parsedMessage.hostname,
       tag: parsedMessage.tag,
       message: parsedMessage.message,
-      raw: message
+      raw: message,
     };
 
     this.messages.push(syslogEntry);
-    
+
     // Keep only the last maxMessages
     if (this.messages.length > this.maxMessages) {
       this.messages = this.messages.slice(-this.maxMessages);
     }
 
-    logger.debug(`Received syslog from ${rinfo.address}: ${parsedMessage.message.substring(0, 100)}`);
+    logger.debug(
+      `Received syslog from ${rinfo.address}: ${parsedMessage.message.substring(0, 100)}`,
+    );
   }
 
   parseSyslogMessage(message) {
@@ -116,7 +118,7 @@ class SyslogListener {
         timestamp: match[2],
         hostname: match[3],
         tag: match[4],
-        message: match[5]
+        message: match[5],
       };
     }
 
@@ -141,7 +143,7 @@ class SyslogListener {
         appname: rfc5424Match[5],
         procid: rfc5424Match[6],
         msgid: rfc5424Match[7],
-        message: rfc5424Match[8]
+        message: rfc5424Match[8],
       };
     }
 
@@ -154,23 +156,42 @@ class SyslogListener {
       severityName: 'emerg',
       hostname: 'unknown',
       tag: 'unknown',
-      message: message
+      message: message,
     };
   }
 
   getFacilityName(facility) {
     const facilities = [
-      'kernel', 'user', 'mail', 'daemon', 'auth', 'syslog', 'lpr', 'news',
-      'uucp', 'cron', 'authpriv', 'ftp', 'ntp', 'audit', 'alert', 'clock',
-      'local0', 'local1', 'local2', 'local3', 'local4', 'local5', 'local6', 'local7'
+      'kernel',
+      'user',
+      'mail',
+      'daemon',
+      'auth',
+      'syslog',
+      'lpr',
+      'news',
+      'uucp',
+      'cron',
+      'authpriv',
+      'ftp',
+      'ntp',
+      'audit',
+      'alert',
+      'clock',
+      'local0',
+      'local1',
+      'local2',
+      'local3',
+      'local4',
+      'local5',
+      'local6',
+      'local7',
     ];
     return facilities[facility] || `facility${facility}`;
   }
 
   getSeverityName(severity) {
-    const severities = [
-      'emerg', 'alert', 'crit', 'err', 'warning', 'notice', 'info', 'debug'
-    ];
+    const severities = ['emerg', 'alert', 'crit', 'err', 'warning', 'notice', 'info', 'debug'];
     return severities[severity] || `severity${severity}`;
   }
 
@@ -178,11 +199,12 @@ class SyslogListener {
     let filtered = this.messages;
 
     if (filter) {
-      filtered = this.messages.filter(msg => {
+      filtered = this.messages.filter((msg) => {
         if (filter.severity && msg.severity !== filter.severity) return false;
         if (filter.facility && msg.facility !== filter.facility) return false;
         if (filter.source && msg.source !== filter.source) return false;
-        if (filter.search && !msg.message.toLowerCase().includes(filter.search.toLowerCase())) return false;
+        if (filter.search && !msg.message.toLowerCase().includes(filter.search.toLowerCase()))
+          return false;
         return true;
       });
     }
@@ -192,17 +214,18 @@ class SyslogListener {
 
   getMessagesByRouter(routerHost, limit = 100) {
     return this.messages
-      .filter(msg => msg.hostname === routerHost || msg.source === routerHost)
+      .filter((msg) => msg.hostname === routerHost || msg.source === routerHost)
       .slice(-limit);
   }
 
   searchMessages(searchTerm, limit = 100) {
     const term = searchTerm.toLowerCase();
     return this.messages
-      .filter(msg => 
-        msg.message.toLowerCase().includes(term) ||
-        msg.hostname.toLowerCase().includes(term) ||
-        msg.tag.toLowerCase().includes(term)
+      .filter(
+        (msg) =>
+          msg.message.toLowerCase().includes(term) ||
+          msg.hostname.toLowerCase().includes(term) ||
+          msg.tag.toLowerCase().includes(term),
       )
       .slice(-limit);
   }
@@ -219,7 +242,7 @@ class SyslogListener {
       totalMessages: this.messages.length,
       bySeverity: {},
       byFacility: {},
-      bySource: {}
+      bySource: {},
     };
 
     for (const msg of this.messages) {

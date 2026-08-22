@@ -36,7 +36,14 @@ export interface ClientStats {
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => { clearTimeout(t); reject(new Error('aborted')); }, { once: true });
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(t);
+        reject(new Error('aborted'));
+      },
+      { once: true },
+    );
   });
 }
 
@@ -65,10 +72,15 @@ export class AiClient {
   private lastError: string | null = null;
   private lastCallAt: string | null = null;
 
-  constructor(readonly config: AiConfig, logger: Logger = noopLogger) {
+  constructor(
+    readonly config: AiConfig,
+    logger: Logger = noopLogger,
+  ) {
     this.log = logger;
     this.adapter =
-      config.provider === 'anthropic' ? new AnthropicAdapter(config) : new OpenAiCompatibleAdapter(config);
+      config.provider === 'anthropic'
+        ? new AnthropicAdapter(config)
+        : new OpenAiCompatibleAdapter(config);
     this.budget = new Budget(config.dailyCallBudget, config.dailyTokenBudget);
     this.breaker = new CircuitBreaker(config.breakerThreshold, config.breakerCooldownMs);
   }
@@ -131,7 +143,9 @@ export class AiClient {
         // An auth failure will not resolve itself. Stop, and stay stopped.
         if (aiErr.reason === 'auth') {
           this.breaker.recordFailure(true);
-          this.log.error(`AI authentication failed - AI layer disabled until restart: ${aiErr.message}`);
+          this.log.error(
+            `AI authentication failed - AI layer disabled until restart: ${aiErr.message}`,
+          );
           return null;
         }
         if (!aiErr.retryable || attempt === maxAttempts) break;
@@ -140,7 +154,9 @@ export class AiClient {
         // do not retry in lockstep.
         const base = Math.min(1000 * 2 ** (attempt - 1), 8000);
         const wait = base + Math.floor(Math.random() * 250);
-        this.log.warn(`AI call failed (${aiErr.reason}), retry ${attempt}/${this.config.maxRetries} in ${wait}ms`);
+        this.log.warn(
+          `AI call failed (${aiErr.reason}), retry ${attempt}/${this.config.maxRetries} in ${wait}ms`,
+        );
         try {
           await sleep(wait);
         } catch {
@@ -183,10 +199,16 @@ export class AiClient {
 
     const second = parseStructured(repaired.text, schema);
     if (second.ok) {
-      return { value: second.value, strategy: 'repaired', attempts: first.attempts + repaired.attempts };
+      return {
+        value: second.value,
+        strategy: 'repaired',
+        attempts: first.attempts + repaired.attempts,
+      };
     }
 
-    this.log.warn(`AI response still invalid after repair (${second.error}) - caller should use its fallback`);
+    this.log.warn(
+      `AI response still invalid after repair (${second.error}) - caller should use its fallback`,
+    );
     return null;
   }
 
@@ -288,7 +310,9 @@ export function resolveAiConfig(
     ...(partial.dailyTokenBudget !== undefined || numeric(env.AI_DAILY_TOKEN_BUDGET) !== undefined
       ? { dailyTokenBudget: partial.dailyTokenBudget ?? numeric(env.AI_DAILY_TOKEN_BUDGET) }
       : {}),
-    ...(partial.requestTimeoutMs !== undefined ? { requestTimeoutMs: partial.requestTimeoutMs } : {}),
+    ...(partial.requestTimeoutMs !== undefined
+      ? { requestTimeoutMs: partial.requestTimeoutMs }
+      : {}),
     ...(partial.maxRetries !== undefined ? { maxRetries: partial.maxRetries } : {}),
     ...(partial.temperature !== undefined ? { temperature: partial.temperature } : {}),
     ...(partial.appName !== undefined ? { appName: partial.appName } : {}),

@@ -27,7 +27,7 @@ class ChatEngine {
     this.actionExecutor = actionExecutor;
     this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
       '{{KNOWN_AGENTS}}',
-      config.known_agents.join(', ')
+      config.known_agents.join(', '),
     );
   }
 
@@ -63,7 +63,11 @@ class ChatEngine {
     const llmResult = await this.llmClient.complete(this.systemPrompt, message);
 
     if (!llmResult || !llmResult.text) {
-      return { reply: "Sorry, I couldn't process that right now - try again in a moment.", requiresConfirmation: false, result: null };
+      return {
+        reply: "Sorry, I couldn't process that right now - try again in a moment.",
+        requiresConfirmation: false,
+        result: null,
+      };
     }
 
     const intent = this.parseIntent(llmResult.text);
@@ -82,9 +86,10 @@ class ChatEngine {
     if (this.actionExecutor.needsAgentName(action)) {
       if (!agentName || !this.actionExecutor.isKnownAgent(agentName)) {
         return {
-          reply: reply || `Which agent do you mean? Valid names: ${this.config.known_agents.join(', ')}`,
+          reply:
+            reply || `Which agent do you mean? Valid names: ${this.config.known_agents.join(', ')}`,
           requiresConfirmation: false,
-          result: null
+          result: null,
         };
       }
     }
@@ -93,7 +98,7 @@ class ChatEngine {
       return {
         reply: reply || `About to run "${action}" on ${agentName} - confirm to proceed.`,
         requiresConfirmation: true,
-        pendingAction: { action, agentName }
+        pendingAction: { action, agentName },
       };
     }
 
@@ -110,13 +115,21 @@ class ChatEngine {
       return { success: false, error: 'Invalid or missing pendingAction' };
     }
     if (!this.actionExecutor.isDestructive(pendingAction.action)) {
-      return { success: false, error: 'This action does not require confirmation - call it directly via chat' };
+      return {
+        success: false,
+        error: 'This action does not require confirmation - call it directly via chat',
+      };
     }
-    if (this.actionExecutor.needsAgentName(pendingAction.action) && !this.actionExecutor.isKnownAgent(pendingAction.agentName)) {
+    if (
+      this.actionExecutor.needsAgentName(pendingAction.action) &&
+      !this.actionExecutor.isKnownAgent(pendingAction.agentName)
+    ) {
       return { success: false, error: `Unknown agent: ${pendingAction.agentName}` };
     }
 
-    logger.info(`Confirmed action executing: ${pendingAction.action} on ${pendingAction.agentName}`);
+    logger.info(
+      `Confirmed action executing: ${pendingAction.action} on ${pendingAction.agentName}`,
+    );
     return this.actionExecutor.executeSafely(pendingAction.action, pendingAction.agentName);
   }
 }

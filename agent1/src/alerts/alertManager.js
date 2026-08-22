@@ -37,7 +37,7 @@ class AlertManager {
     this.enabledChannels = {
       console: true,
       email: false,
-      api: false
+      api: false,
     };
 
     this.initializeEmailTransporter();
@@ -53,8 +53,8 @@ class AlertManager {
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
+        pass: process.env.SMTP_PASS,
+      },
     };
 
     if (process.env.SMTP_HOST) {
@@ -82,7 +82,7 @@ class AlertManager {
       sentAt: new Date().toISOString(),
       delivered: decision.deliver,
       suppressionReason: decision.reason,
-      occurrence: decision.occurrence
+      occurrence: decision.occurrence,
     });
 
     if (this.alertHistory.length > 1000) {
@@ -92,7 +92,7 @@ class AlertManager {
     if (!decision.deliver) {
       logger.debug(
         `Alert suppressed (${alert.router}/${alert.metric}, occurrence ${decision.occurrence}) - ` +
-        'condition unchanged since the last notification'
+          'condition unchanged since the last notification',
       );
       return;
     }
@@ -124,7 +124,7 @@ class AlertManager {
    */
   async sendConsoleAlert(alert) {
     const timestamp = new Date().toLocaleString();
-    
+
     console.log('\n' + '='.repeat(80));
     console.log(`🚨 ALERT [${alert.severity.toUpperCase()}]`);
     console.log(`⏰ Time: ${timestamp}`);
@@ -154,7 +154,7 @@ class AlertManager {
         .replace(/[\r\n]+/g, ' ')
         .slice(0, 200),
       text: this.formatAlertEmail(alert),
-      html: this.formatAlertHTMLEmail(alert)
+      html: this.formatAlertHTMLEmail(alert),
     };
 
     try {
@@ -174,16 +174,20 @@ class AlertManager {
     }
 
     try {
-      await axios.post(this.apiEndpoint, {
-        alert,
-        timestamp: new Date().toISOString(),
-        source: 'router-monitoring-agent'
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
+      await axios.post(
+        this.apiEndpoint,
+        {
+          alert,
+          timestamp: new Date().toISOString(),
+          source: 'router-monitoring-agent',
         },
-        timeout: 5000
-      });
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 5000,
+        },
+      );
 
       logger.info(`API alert sent for ${alert.router} - ${alert.metric}`);
     } catch (error) {
@@ -221,7 +225,7 @@ Sent by Router Monitoring Agent
   formatAlertHTMLEmail(alert) {
     const severityColors = {
       warning: '#FFA500',
-      critical: '#FF0000'
+      critical: '#FF0000',
     };
 
     const color = severityColors[alert.severity] || '#000000';
@@ -234,7 +238,7 @@ Sent by Router Monitoring Agent
       threshold: escapeHtml(alert.threshold),
       timestamp: escapeHtml(alert.timestamp),
       message: escapeHtml(alert.message),
-      details: alert.details ? escapeHtml(alert.details) : null
+      details: alert.details ? escapeHtml(alert.details) : null,
     };
 
     return `
@@ -285,10 +289,15 @@ Sent by Router Monitoring Agent
         threshold: 'n/a',
         timestamp: new Date().toISOString(),
         message: `RESOLVED: ${item.metric} on ${item.router} recovered after ${minutes}m (${item.occurrences} occurrences)`,
-        details: `First seen ${item.firstSeen}, last seen ${item.lastSeen}`
+        details: `First seen ${item.firstSeen}, last seen ${item.lastSeen}`,
       };
       logger.info(alert.message);
-      this.alertHistory.push({ ...alert, sentAt: new Date().toISOString(), delivered: true, suppressionReason: 'resolved' });
+      this.alertHistory.push({
+        ...alert,
+        sentAt: new Date().toISOString(),
+        delivered: true,
+        suppressionReason: 'resolved',
+      });
 
       const promises = [];
       if (this.enabledChannels.console) promises.push(this.sendConsoleAlert(alert));
@@ -319,13 +328,13 @@ Sent by Router Monitoring Agent
       total: this.alertHistory.length,
       bySeverity: {
         warning: 0,
-        critical: 0
+        critical: 0,
       },
       byMetric: {},
-      byRouter: {}
+      byRouter: {},
     };
 
-    this.alertHistory.forEach(alert => {
+    this.alertHistory.forEach((alert) => {
       stats.bySeverity[alert.severity] = (stats.bySeverity[alert.severity] || 0) + 1;
       stats.byMetric[alert.metric] = (stats.byMetric[alert.metric] || 0) + 1;
       stats.byRouter[alert.router] = (stats.byRouter[alert.router] || 0) + 1;

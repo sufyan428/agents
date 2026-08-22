@@ -5,7 +5,7 @@ class SyslogListener {
     this.config = config;
     this.logger = logger;
     this.metrics = metrics;
-    
+
     this.server = null;
     this.port = config.syslog?.port || 514;
     this.protocol = config.syslog?.protocol || 'udp';
@@ -37,7 +37,7 @@ class SyslogListener {
 
     this.server.on('error', (err) => {
       this.logger.error('Syslog UDP server error', {
-        error: err.message
+        error: err.message,
       });
       this.errorCount++;
     });
@@ -46,7 +46,7 @@ class SyslogListener {
       const address = this.server.address();
       this.logger.info('Syslog UDP server listening', {
         address: address.address,
-        port: address.port
+        port: address.port,
       });
     });
 
@@ -55,18 +55,18 @@ class SyslogListener {
 
   startTCPListener() {
     const net = require('net');
-    
+
     this.server = net.createServer((socket) => {
       socket.on('data', (data) => {
         this.handleMessage(data, {
           address: socket.remoteAddress,
-          port: socket.remotePort
+          port: socket.remotePort,
         });
       });
 
       socket.on('error', (err) => {
         this.logger.error('Syslog TCP socket error', {
-          error: err.message
+          error: err.message,
         });
         this.errorCount++;
       });
@@ -74,7 +74,7 @@ class SyslogListener {
 
     this.server.listen(this.port, () => {
       this.logger.info('Syslog TCP server listening', {
-        port: this.port
+        port: this.port,
       });
     });
   }
@@ -85,11 +85,11 @@ class SyslogListener {
       this.messageCount++;
 
       const parsed = this.parseSyslogMessage(message);
-      
+
       this.logger.debug('Syslog message received', {
         source: rinfo.address,
         port: rinfo.port,
-        parsed
+        parsed,
       });
 
       // Check if message is from our routers
@@ -98,14 +98,14 @@ class SyslogListener {
       }
 
       // Process the message based on severity
-      if (parsed.severity <= 2) { // Emergency, Alert, Critical
+      if (parsed.severity <= 2) {
+        // Emergency, Alert, Critical
         this.handleCriticalSyslog(parsed, rinfo.address);
       }
-
     } catch (error) {
       this.logger.error('Failed to process syslog message', {
         error: error.message,
-        message: msg.toString('utf8')
+        message: msg.toString('utf8'),
       });
       this.errorCount++;
     }
@@ -114,7 +114,7 @@ class SyslogListener {
   parseSyslogMessage(message) {
     // RFC3164 format: <priority>timestamp hostname tag: message
     // RFC5424 format: <priority>version timestamp hostname app-name procid msgid structured-data message
-    
+
     const priorityMatch = message.match(/^<(\d+)>(.*)/);
     if (!priorityMatch) {
       return {
@@ -122,7 +122,7 @@ class SyslogListener {
         priority: 0,
         facility: 0,
         severity: 0,
-        message: message
+        message: message,
       };
     }
 
@@ -146,12 +146,14 @@ class SyslogListener {
         message: remainder,
         priority,
         facility,
-        severity
+        severity,
       };
     }
 
     // Try to parse RFC3164 format
-    const rfc3164Match = remainder.match(/^(\S{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(\S+):\s*(.*)/);
+    const rfc3164Match = remainder.match(
+      /^(\S{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(\S+):\s*(.*)/,
+    );
     if (rfc3164Match) {
       return {
         raw: message,
@@ -161,7 +163,7 @@ class SyslogListener {
         message: rfc3164Match[4],
         priority,
         facility,
-        severity
+        severity,
       };
     }
 
@@ -171,24 +173,24 @@ class SyslogListener {
       message: remainder,
       priority,
       facility,
-      severity
+      severity,
     };
   }
 
   isFromRouter(address) {
     const primaryHost = this.config.primary?.host;
     const backupHost = this.config.backup?.host;
-    
+
     return address === primaryHost || address === backupHost;
   }
 
   processRouterSyslog(parsed, address) {
     const routerType = address === this.config.primary?.host ? 'primary' : 'backup';
-    
+
     this.logger.info(`Router syslog from ${routerType}`, {
       host: address,
       severity: parsed.severity,
-      message: parsed.message
+      message: parsed.message,
     });
 
     // Check for router-specific events
@@ -206,28 +208,17 @@ class SyslogListener {
   }
 
   isFailoverEvent(parsed) {
-    const failoverKeywords = [
-      'failover',
-      'redundancy',
-      'standby',
-      'vrrp',
-      'hsrp'
-    ];
-    
+    const failoverKeywords = ['failover', 'redundancy', 'standby', 'vrrp', 'hsrp'];
+
     const message = parsed.message.toLowerCase();
-    return failoverKeywords.some(keyword => message.includes(keyword));
+    return failoverKeywords.some((keyword) => message.includes(keyword));
   }
 
   isInterfaceDownEvent(parsed) {
-    const interfaceKeywords = [
-      'interface.*down',
-      'link.*down',
-      'port.*down',
-      'connection.*lost'
-    ];
-    
+    const interfaceKeywords = ['interface.*down', 'link.*down', 'port.*down', 'connection.*lost'];
+
     const message = parsed.message.toLowerCase();
-    return interfaceKeywords.some(keyword => message.match(keyword));
+    return interfaceKeywords.some((keyword) => message.match(keyword));
   }
 
   isConfigurationChangeEvent(parsed) {
@@ -235,23 +226,22 @@ class SyslogListener {
       'config.*changed',
       'configuration.*modified',
       'startup-config',
-      'running-config'
+      'running-config',
     ];
-    
+
     const message = parsed.message.toLowerCase();
-    return configKeywords.some(keyword => message.includes(keyword));
+    return configKeywords.some((keyword) => message.includes(keyword));
   }
 
   handleCriticalSyslog(parsed, address) {
     this.logger.critical('Critical syslog message', {
       source: address,
       severity: parsed.severity,
-      message: parsed.message
+      message: parsed.message,
     });
 
     // Could trigger alerts or additional monitoring here
     if (this.isFromRouter(address)) {
-      
       // You might want to trigger additional health checks
       // or adjust monitoring thresholds based on critical events
     }
@@ -259,7 +249,7 @@ class SyslogListener {
 
   handleRouterFailoverEvent(parsed, routerType) {
     this.logger.warn(`Router failover event detected on ${routerType}`, {
-      message: parsed.message
+      message: parsed.message,
     });
 
     // This could be used to detect if the router itself
@@ -268,7 +258,7 @@ class SyslogListener {
 
   handleInterfaceDownEvent(parsed, routerType) {
     this.logger.warn(`Interface down event on ${routerType}`, {
-      message: parsed.message
+      message: parsed.message,
     });
 
     // Could trigger additional interface monitoring
@@ -277,7 +267,7 @@ class SyslogListener {
 
   handleConfigurationChangeEvent(parsed, routerType) {
     this.logger.info(`Configuration change detected on ${routerType}`, {
-      message: parsed.message
+      message: parsed.message,
     });
 
     // Could trigger config sync if needed
@@ -289,7 +279,7 @@ class SyslogListener {
       port: this.port,
       isActive: this.server !== null,
       messageCount: this.messageCount,
-      errorCount: this.errorCount
+      errorCount: this.errorCount,
     };
   }
 

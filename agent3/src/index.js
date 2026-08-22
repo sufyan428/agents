@@ -2,13 +2,13 @@
 
 /**
  * Security & Intrusion Detection Agent
- * 
+ *
  * Main entry point for the security monitoring agent that protects
  * mission-critical router environments by detecting:
  * - Unauthorized access attempts
  * - Suspicious traffic patterns
  * - Configuration tampering
- * 
+ *
  * @author NinjaTech AI
  * @version 1.0.0
  */
@@ -42,7 +42,7 @@ class SecurityIDAgent {
     try {
       // Load configuration
       this.config = ConfigLoader.load(this.configPath);
-      
+
       // Initialize logger
       this.logger = Logger.create(this.config.logging);
       this.logger.info('Initializing Security & Intrusion Detection Agent');
@@ -51,12 +51,12 @@ class SecurityIDAgent {
 
       // Initialize Prometheus metrics
       this.metrics = new PrometheusMetrics(this.config.prometheus);
-      
+
       // Initialize alert dispatcher
       this.modules.alertDispatcher = new AlertDispatcher(
         this.config.alerts,
         this.logger,
-        this.metrics
+        this.metrics,
       );
 
       // Initialize core security modules
@@ -75,7 +75,7 @@ class SecurityIDAgent {
       this.config.security.authentication,
       this.logger,
       this.metrics,
-      this.modules.alertDispatcher
+      this.modules.alertDispatcher,
     );
 
     // Traffic Analysis Module
@@ -83,7 +83,7 @@ class SecurityIDAgent {
       this.config.security.traffic,
       this.logger,
       this.metrics,
-      this.modules.alertDispatcher
+      this.modules.alertDispatcher,
     );
 
     // Configuration Validation Module
@@ -92,7 +92,7 @@ class SecurityIDAgent {
       this.config.router,
       this.logger,
       this.metrics,
-      this.modules.alertDispatcher
+      this.modules.alertDispatcher,
     );
 
     // Protocol listeners
@@ -102,7 +102,7 @@ class SecurityIDAgent {
         this.logger,
         this.metrics,
         this.modules.authentication,
-        this.modules.traffic
+        this.modules.traffic,
       );
     }
 
@@ -111,7 +111,7 @@ class SecurityIDAgent {
         this.config.router.snmp,
         this.logger,
         this.metrics,
-        this.modules.alertDispatcher
+        this.modules.alertDispatcher,
       );
     }
 
@@ -121,7 +121,7 @@ class SecurityIDAgent {
         this.config.router.host,
         this.logger,
         this.metrics,
-        this.modules.alertDispatcher
+        this.modules.alertDispatcher,
       );
     }
   }
@@ -134,7 +134,7 @@ class SecurityIDAgent {
 
     try {
       this.logger.info('Starting Security & Intrusion Detection Agent');
-      
+
       // Start Prometheus metrics server
       if (this.config.prometheus.enabled) {
         await this.startMetricsServer();
@@ -171,8 +171,9 @@ class SecurityIDAgent {
       this.running = true;
 
       this.logger.info('Security & Intrusion Detection Agent started successfully');
-      this.logger.info(`Prometheus metrics available at: http://0.0.0.0:${this.config.prometheus.port}${this.config.prometheus.path}`);
-
+      this.logger.info(
+        `Prometheus metrics available at: http://0.0.0.0:${this.config.prometheus.port}${this.config.prometheus.path}`,
+      );
     } catch (error) {
       this.logger.error('Failed to start agent:', error);
       this.metrics.agentStatus.set(0);
@@ -191,18 +192,24 @@ class SecurityIDAgent {
       host,
       metricsPath: this.config.prometheus.path || '/metrics',
       authToken: (process.env.AGENT_API_TOKEN || '').trim() || undefined,
-      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
       healthChecks: () => [
         ...Object.entries(this.modules).map(([name, mod]) => ({
           name,
-          status: mod && typeof mod.isRunning === 'function'
-            ? (mod.isRunning() ? 'healthy' : 'degraded')
-            : 'healthy',
+          status:
+            mod && typeof mod.isRunning === 'function'
+              ? mod.isRunning()
+                ? 'healthy'
+                : 'degraded'
+              : 'healthy',
           message: undefined,
-          simulated: false
+          simulated: false,
         })),
-        simulationHealthCheck('agent3')
-      ]
+        simulationHealthCheck('agent3'),
+      ],
     });
 
     const app = this.agentServer.app;
@@ -213,7 +220,9 @@ class SecurityIDAgent {
       try {
         res.set('Content-Type', this.metrics.register.contentType);
         res.end(await this.metrics.register.metrics());
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     });
 
     app.get('/info', (req, res) => {
@@ -229,8 +238,8 @@ class SecurityIDAgent {
           'configuration-validation',
           'syslog-ingestion',
           'snmp-trap-monitoring',
-          'icmp-monitoring'
-        ]
+          'icmp-monitoring',
+        ],
       });
     });
 
@@ -309,7 +318,6 @@ async function main() {
     process.on('unhandledRejection', (reason, _promise) => {
       agent.logger.error('Unhandled rejection:', reason);
     });
-
   } catch (error) {
     console.error('Failed to start agent:', error);
     process.exit(1);

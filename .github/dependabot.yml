@@ -2,87 +2,87 @@
 # Grouped so a routine bump is one PR per agent, not five.
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/agent1"
+  - package-ecosystem: 'npm'
+    directory: '/agent1'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent1-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent2"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent2'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent2-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent3"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent3'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent3-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent4"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent4'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent4-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent5"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent5'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent5-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent6"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent6'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent6-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent7"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent7'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent7-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent8"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent8'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent8-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent9"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent9'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent9-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
-    directory: "/agent10"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'npm'
+    directory: '/agent10'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 3
     groups:
       agent10-minor-and-patch:
-        update-types: ["minor", "patch"]
-  - package-ecosystem: "github-actions"
-    directory: "/"
+        update-types: ['minor', 'patch']
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'

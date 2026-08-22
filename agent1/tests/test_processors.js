@@ -16,7 +16,7 @@ test('ThresholdProcessor should check CPU thresholds', () => {
     router: 'TestRouter',
     cpu: 95,
     memory: 50,
-    temperature: 60
+    temperature: 60,
   };
 
   const alerts = thresholdProcessor.processSNMPMetrics(testMetrics);
@@ -28,7 +28,7 @@ test('ThresholdProcessor should check memory thresholds', () => {
     router: 'TestRouter',
     cpu: 50,
     memory: 92,
-    temperature: 60
+    temperature: 60,
   };
 
   const alerts = thresholdProcessor.processSNMPMetrics(testMetrics);
@@ -40,7 +40,7 @@ test('ThresholdProcessor should check temperature thresholds', () => {
     router: 'TestRouter',
     cpu: 50,
     memory: 50,
-    temperature: 88
+    temperature: 88,
   };
 
   const alerts = thresholdProcessor.processSNMPMetrics(testMetrics);

@@ -1,6 +1,6 @@
 /**
  * SNMP Trap Listener Module
- * 
+ *
  * Listens for SNMP traps from routers and processes them
  * for security events
  */
@@ -40,7 +40,7 @@ class SnmpTrapListener {
           const address = this.server.address();
           this.logger.info('SNMP trap listener listening', {
             address: address.address,
-            port: address.port
+            port: address.port,
           });
           this.isRunning = true;
           resolve();
@@ -48,7 +48,6 @@ class SnmpTrapListener {
 
         // SNMP traps typically come on port 162
         this.server.bind(162, '0.0.0.0');
-
       } catch (error) {
         this.logger.error('Failed to start SNMP trap listener:', error);
         reject(error);
@@ -89,12 +88,11 @@ class SnmpTrapListener {
         source_port: rinfo.port,
         trap_type: trapData.type,
         oid: trapData.oid,
-        message: trapData.message
+        message: trapData.message,
       });
 
       // Process trap based on type
       this.processTrap(trapData);
-
     } catch (error) {
       this.logger.error('Error handling SNMP trap:', error);
     }
@@ -117,7 +115,7 @@ class SnmpTrapListener {
       type: 'unknown',
       oid: '',
       message: '',
-      severity: 'info'
+      severity: 'info',
     };
 
     // Try to extract OID and message from the trap
@@ -129,32 +127,27 @@ class SnmpTrapListener {
       trapData.oid = '1.3.6.1.6.3.1.1.5.5';
       trapData.severity = 'high';
       trapData.message = 'SNMP authentication failure detected';
-    }
-    else if (msgStr.includes('linkDown') || msgStr.includes('1.3.6.1.2.1.2.2.1.8')) {
+    } else if (msgStr.includes('linkDown') || msgStr.includes('1.3.6.1.2.1.2.2.1.8')) {
       trapData.type = 'link_down';
       trapData.oid = '1.3.6.1.2.1.2.2.1.8';
       trapData.severity = 'high';
       trapData.message = 'Network link went down';
-    }
-    else if (msgStr.includes('coldStart') || msgStr.includes('1.3.6.1.6.3.1.1.5.1')) {
+    } else if (msgStr.includes('coldStart') || msgStr.includes('1.3.6.1.6.3.1.1.5.1')) {
       trapData.type = 'cold_start';
       trapData.oid = '1.3.6.1.6.3.1.1.5.1';
       trapData.severity = 'critical';
       trapData.message = 'Device cold start (reboot) detected';
-    }
-    else if (msgStr.includes('warmStart') || msgStr.includes('1.3.6.1.6.3.1.1.5.2')) {
+    } else if (msgStr.includes('warmStart') || msgStr.includes('1.3.6.1.6.3.1.1.5.2')) {
       trapData.type = 'warm_start';
       trapData.oid = '1.3.6.1.6.3.1.1.5.2';
       trapData.severity = 'high';
       trapData.message = 'Device warm start detected';
-    }
-    else if (msgStr.includes('security violation') || msgStr.includes('securityViolation')) {
+    } else if (msgStr.includes('security violation') || msgStr.includes('securityViolation')) {
       trapData.type = 'security_violation';
       trapData.oid = 'unknown';
       trapData.severity = 'critical';
       trapData.message = 'Security violation detected';
-    }
-    else {
+    } else {
       // Generic trap
       trapData.type = 'generic';
       trapData.oid = 'unknown';
@@ -200,7 +193,7 @@ class SnmpTrapListener {
   handleAuthenticationFailure(trapData) {
     this.logger.warn('SNMP authentication failure detected', {
       source_ip: trapData.source_ip,
-      timestamp: trapData.timestamp
+      timestamp: trapData.timestamp,
     });
 
     this.alertDispatcher.dispatchAlert({
@@ -213,8 +206,8 @@ class SnmpTrapListener {
         oid: trapData.oid,
         message: trapData.message,
         recommended_action: 'Investigate source and verify SNMP community string configuration',
-        timestamp: trapData.timestamp
-      }
+        timestamp: trapData.timestamp,
+      },
     });
   }
 
@@ -224,7 +217,7 @@ class SnmpTrapListener {
   handleLinkDown(trapData) {
     this.logger.warn('Network link down detected', {
       source_ip: trapData.source_ip,
-      timestamp: trapData.timestamp
+      timestamp: trapData.timestamp,
     });
 
     this.alertDispatcher.dispatchAlert({
@@ -237,8 +230,8 @@ class SnmpTrapListener {
         oid: trapData.oid,
         message: trapData.message,
         recommended_action: 'Check network connectivity and interface status',
-        timestamp: trapData.timestamp
-      }
+        timestamp: trapData.timestamp,
+      },
     });
   }
 
@@ -248,7 +241,7 @@ class SnmpTrapListener {
   handleColdStart(trapData) {
     this.logger.error('Device cold start detected', {
       source_ip: trapData.source_ip,
-      timestamp: trapData.timestamp
+      timestamp: trapData.timestamp,
     });
 
     this.alertDispatcher.dispatchAlert({
@@ -261,8 +254,8 @@ class SnmpTrapListener {
         oid: trapData.oid,
         message: trapData.message,
         recommended_action: 'Verify if reboot was authorized. Investigate cause of restart.',
-        timestamp: trapData.timestamp
-      }
+        timestamp: trapData.timestamp,
+      },
     });
   }
 
@@ -272,7 +265,7 @@ class SnmpTrapListener {
   handleWarmStart(trapData) {
     this.logger.warn('Device warm start detected', {
       source_ip: trapData.source_ip,
-      timestamp: trapData.timestamp
+      timestamp: trapData.timestamp,
     });
 
     this.alertDispatcher.dispatchAlert({
@@ -285,8 +278,8 @@ class SnmpTrapListener {
         oid: trapData.oid,
         message: trapData.message,
         recommended_action: 'Verify if restart was authorized',
-        timestamp: trapData.timestamp
-      }
+        timestamp: trapData.timestamp,
+      },
     });
   }
 
@@ -296,7 +289,7 @@ class SnmpTrapListener {
   handleSecurityViolation(trapData) {
     this.logger.error('Security violation detected via SNMP', {
       source_ip: trapData.source_ip,
-      timestamp: trapData.timestamp
+      timestamp: trapData.timestamp,
     });
 
     this.alertDispatcher.dispatchAlert({
@@ -309,8 +302,8 @@ class SnmpTrapListener {
         oid: trapData.oid,
         message: trapData.message,
         recommended_action: 'IMMEDIATE INVESTIGATION REQUIRED',
-        timestamp: trapData.timestamp
-      }
+        timestamp: trapData.timestamp,
+      },
     });
   }
 
@@ -320,14 +313,14 @@ class SnmpTrapListener {
   handleGenericTrap(trapData) {
     this.logger.debug('Generic SNMP trap received', {
       source_ip: trapData.source_ip,
-      message: trapData.message
+      message: trapData.message,
     });
 
     // Log informational traps without alerting
     this.logger.info('SNMP trap', {
       type: trapData.type,
       source_ip: trapData.source_ip,
-      message: trapData.message
+      message: trapData.message,
     });
   }
 
@@ -345,7 +338,7 @@ class SnmpTrapListener {
     return {
       running: this.isRunning,
       traps_received: this.trapCount,
-      port: 162
+      port: 162,
     };
   }
 }

@@ -6,5 +6,5 @@
 const thresholdProcessor = require('./thresholdProcessor');
 
 module.exports = {
-  thresholdProcessor
+  thresholdProcessor,
 };

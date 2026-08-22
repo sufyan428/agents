@@ -12,13 +12,13 @@ server:
   metrics_path: /metrics
 
 orchestrator:
-  base_url: "http://localhost:8080"
+  base_url: 'http://localhost:8080'
   timeout_ms: 10000
 
 sources:
-  agent7_url: "http://localhost:9096"
-  agent8_url: "http://localhost:9097"
-  agent9_url: "http://localhost:9098"
+  agent7_url: 'http://localhost:9096'
+  agent8_url: 'http://localhost:9097'
+  agent9_url: 'http://localhost:9098'
   timeout_ms: 10000
 
 # Every agent name the chat interface is allowed to reference/act on.
@@ -38,8 +38,8 @@ ai:
   # compatibility endpoint, Together, Groq, Ollama, vLLM, LM Studio and
   # anything else speaking /chat/completions. Use "anthropic" for the native
   # Anthropic API.
-  provider: "openai-compatible"
-  base_url: "https://openrouter.ai/api/v1"
+  provider: 'openai-compatible'
+  base_url: 'https://openrouter.ai/api/v1'
 
   # Any model name the endpoint accepts. The framework holds no opinion and
   # maintains no allowlist - one would be wrong within a month.
@@ -51,7 +51,7 @@ ai:
   #
   # Agents 7-10 scale with whatever is behind them. A free model works; a
   # frontier model works better. That is your call and your bill.
-  model: "nvidia/nemotron-3-nano-30b-a3b:free"
+  model: 'nvidia/nemotron-3-nano-30b-a3b:free'
 
   max_tokens: 4096
   request_timeout_ms: 45000
@@ -66,5 +66,5 @@ notifications:
   history_size: 30
 
 logging:
-  level: "info"
-  directory: "./logs"
+  level: 'info'
+  directory: './logs'

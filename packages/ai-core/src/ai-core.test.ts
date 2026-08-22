@@ -19,14 +19,20 @@ test('parses clean JSON directly', () => {
 });
 
 test('extracts JSON from a markdown fence', () => {
-  const r = parseStructured('Sure!\n```json\n{"action":"stop_agent","agentName":"agent1"}\n```\n', Intent);
+  const r = parseStructured(
+    'Sure!\n```json\n{"action":"stop_agent","agentName":"agent1"}\n```\n',
+    Intent,
+  );
   assert.ok(r.ok);
   assert.equal(r.strategy, 'fence');
   assert.equal(r.value.agentName, 'agent1');
 });
 
 test('extracts JSON embedded in prose', () => {
-  const r = parseStructured('Here you go: {"action":"chat","agentName":null} - hope that helps!', Intent);
+  const r = parseStructured(
+    'Here you go: {"action":"chat","agentName":null} - hope that helps!',
+    Intent,
+  );
   assert.ok(r.ok);
   assert.equal(r.strategy, 'braces');
 });
@@ -133,7 +139,8 @@ test('an auth failure opens the breaker permanently', () => {
 
 test('AI_* generic vars are preferred and need no provider named', () => {
   const cfg = resolveAiConfig({}, {
-    AI_API_KEY: 'k', AI_MODEL: 'meta-llama/llama-3.3-70b-instruct:free',
+    AI_API_KEY: 'k',
+    AI_MODEL: 'meta-llama/llama-3.3-70b-instruct:free',
     AI_BASE_URL: 'https://openrouter.ai/api/v1',
   } as NodeJS.ProcessEnv);
   assert.ok(cfg);
@@ -143,7 +150,8 @@ test('AI_* generic vars are preferred and need no provider named', () => {
 
 test('legacy OPENROUTER_* still resolves, so existing .env files keep working', () => {
   const cfg = resolveAiConfig({}, {
-    OPENROUTER_API_KEY: 'k', OPENROUTER_MODEL: 'openai/gpt-oss-20b:free',
+    OPENROUTER_API_KEY: 'k',
+    OPENROUTER_MODEL: 'openai/gpt-oss-20b:free',
   } as NodeJS.ProcessEnv);
   assert.ok(cfg);
   assert.equal(cfg.provider, 'openai-compatible');
@@ -152,7 +160,8 @@ test('legacy OPENROUTER_* still resolves, so existing .env files keep working', 
 
 test('an Anthropic key alone selects the anthropic adapter', () => {
   const cfg = resolveAiConfig({}, {
-    ANTHROPIC_API_KEY: 'k', ANTHROPIC_MODEL: 'claude-opus-5',
+    ANTHROPIC_API_KEY: 'k',
+    ANTHROPIC_MODEL: 'claude-opus-5',
   } as NodeJS.ProcessEnv);
   assert.ok(cfg);
   assert.equal(cfg.provider, 'anthropic');
@@ -167,10 +176,10 @@ test('a key with no model is not enough', () => {
 });
 
 test('explicit config beats the environment', () => {
-  const cfg = resolveAiConfig(
-    { model: 'explicit-model' },
-    { AI_API_KEY: 'k', AI_MODEL: 'env-model' } as NodeJS.ProcessEnv,
-  );
+  const cfg = resolveAiConfig({ model: 'explicit-model' }, {
+    AI_API_KEY: 'k',
+    AI_MODEL: 'env-model',
+  } as NodeJS.ProcessEnv);
   assert.equal(cfg?.model, 'explicit-model');
 });
 
@@ -198,7 +207,10 @@ function withAdapter(client: AiClient, adapter: Adapter): AiClient {
 }
 
 const okResult = (text: string): CompletionResult => ({
-  text, usage: { inputTokens: 10, outputTokens: 5 }, model: 'm', attempts: 1,
+  text,
+  usage: { inputTokens: 10, outputTokens: 5 },
+  model: 'm',
+  attempts: 1,
 });
 
 test('retries an empty completion and succeeds - the free-tier failure mode', async () => {

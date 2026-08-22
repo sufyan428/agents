@@ -26,8 +26,8 @@ class Logger {
               msg += ` ${JSON.stringify(metadata)}`;
             }
             return msg;
-          })
-        )
+          }),
+        ),
       }),
 
       // File transport with rotation
@@ -39,8 +39,8 @@ class Logger {
         maxFiles: maxFiles,
         format: winston.format.combine(
           winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          winston.format.json()
-        )
+          winston.format.json(),
+        ),
       }),
 
       // Error log file
@@ -53,15 +53,15 @@ class Logger {
         maxFiles: maxFiles,
         format: winston.format.combine(
           winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          winston.format.json()
-        )
-      })
+          winston.format.json(),
+        ),
+      }),
     ];
 
     return winston.createLogger({
       level: logLevel,
       transports: transports,
-      exitOnError: false
+      exitOnError: false,
     });
   }
 
@@ -93,7 +93,7 @@ class Logger {
       backup_router: event.backup,
       reason: event.reason,
       action: event.action,
-      duration: event.duration
+      duration: event.duration,
     });
   }
 
@@ -102,7 +102,7 @@ class Logger {
       router: check.router,
       status: check.status,
       response_time: check.response_time,
-      method: check.method
+      method: check.method,
     });
   }
 
@@ -112,7 +112,7 @@ class Logger {
       status: sync.status,
       source: sync.source,
       destination: sync.destination,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

@@ -8,36 +8,36 @@ router:
     # Defaults to the bundled simulator so the framework works out of the box
     # with no hardware: run `npm run sim` in another terminal.
     # Point this at a real device when you have one - nothing else changes.
-    host: "127.0.0.1"
-    snmp_community: "public"          # CHANGE THIS to your SNMP community string
-    snmp_version: "2c"
-    snmp_port: 1161                   # 1161 = simulator. Real devices use 161.
-    location: "Main-Office"
-    type: "cisco"                     # cisco, juniper, mikrotik, etc.
-  
+    host: '127.0.0.1'
+    snmp_community: 'public' # CHANGE THIS to your SNMP community string
+    snmp_version: '2c'
+    snmp_port: 1161 # 1161 = simulator. Real devices use 161.
+    location: 'Main-Office'
+    type: 'cisco' # cisco, juniper, mikrotik, etc.
+
   # BACKUP ROUTER (for Agent 2 - Resilience & Failover)
   backup:
     # Your real router works here with no admin access at all: agent2's
     # heartbeat and agent4's latency tracking use ICMP, which needs no
     # credentials. SNMP against it will simply fail and be reported as such.
-    host: "192.168.1.1"
-    snmp_community: "public"          # CHANGE THIS to your SNMP community string
-    snmp_version: "2c"
+    host: '192.168.1.1'
+    snmp_community: 'public' # CHANGE THIS to your SNMP community string
+    snmp_version: '2c'
     snmp_port: 161
-    location: "Backup-Office"
-    type: "cisco"
+    location: 'Backup-Office'
+    type: 'cisco'
 
 # Syslog Configuration (all agents will receive syslog from routers)
 syslog:
   # Unprivileged. Port 514 requires root on Linux and in the containers, where
   # the agents deliberately run as a non-root user.
   port: 5140
-  protocol: "udp"
+  protocol: 'udp'
 
 # SNMP Trap Configuration
 snmp_traps:
   port: 162
-  protocol: "udp"
+  protocol: 'udp'
 
 # Agent Configuration (usually don't need to change these)
 agents:
@@ -45,34 +45,34 @@ agents:
   monitoring:
     enabled: true
     port: 9090
-    metrics_interval: 30              # seconds
-    
+    metrics_interval: 30 # seconds
+
   # Agent 2: Resilience & Failover
   resilience:
     enabled: true
     port: 9091
     auto_failover: true
-    heartbeat_interval: 5             # seconds
+    heartbeat_interval: 5 # seconds
     max_missed_heartbeats: 3
     failback_enabled: true
-    failback_delay: 30                # seconds
-    
+    failback_delay: 30 # seconds
+
   # Agent 3: Security & Intrusion Detection
   security:
     enabled: true
     port: 9092
-    alert_level: "high"               # low, medium, high, critical
+    alert_level: 'high' # low, medium, high, critical
     max_failed_attempts: 5
-    
+
   # Agent 4: Performance Optimization
   performance:
     enabled: true
     port: 9093
-    auto_optimize: false              # Set to true for automatic optimization
-    threshold_cpu: 80                 # percent
-    threshold_memory: 85              # percent
-    threshold_latency: 100            # milliseconds
-    
+    auto_optimize: false # Set to true for automatic optimization
+    threshold_cpu: 80 # percent
+    threshold_memory: 85 # percent
+    threshold_latency: 100 # milliseconds
+
   # Agent 5: Automation & Governance
   automation:
     enabled: true
@@ -82,7 +82,7 @@ agents:
     # and even then every action must be named in self_healing.allowed_actions
     # and dry_run must be set to false. See agent5/config.yml.
     auto_heal: false
-    compliance_check_interval: 300    # seconds (5 minutes)
+    compliance_check_interval: 300 # seconds (5 minutes)
 
   # Agent 7: AI Correlation & Reasoning (optional, BYOK)
   # Agent 8: AI Reporting (optional, BYOK)
@@ -113,18 +113,18 @@ orchestrator:
   # Loopback by default. The gateway can start, stop and restart every agent,
   # so exposing it beyond this host must be a deliberate act - and if you do,
   # put authentication and TLS in front of it. Override with BIND_HOST.
-  bind_host: "127.0.0.1"
-  health_check_interval: 10           # seconds
+  bind_host: '127.0.0.1'
+  health_check_interval: 10 # seconds
   auto_restart_failed_agents: true
-  log_level: "info"                   # debug, info, warn, error
+  log_level: 'info' # debug, info, warn, error
 
 # Prometheus Configuration
 prometheus:
   port: 9095
-  scrape_interval: 15                 # seconds
+  scrape_interval: 15 # seconds
 
 # Grafana Configuration
 grafana:
   port: 3000
-  admin_user: "admin"
-  admin_password: "admin"             # CHANGE THIS in production
+  admin_user: 'admin'
+  admin_password: 'admin' # CHANGE THIS in production

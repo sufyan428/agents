@@ -7,15 +7,15 @@ class HeartbeatChecker {
     this.metrics = metrics;
     this.snmpMonitor = snmpMonitor;
     this.pingMonitor = pingMonitor;
-    
+
     this.missedHeartbeats = {
       primary: 0,
-      backup: 0
+      backup: 0,
     };
-    
+
     this.primaryHealthStatus = 'unknown';
     this.backupHealthStatus = 'unknown';
-    
+
     this.cronJob = null;
     this.failoverCallback = null;
   }
@@ -24,14 +24,14 @@ class HeartbeatChecker {
     this.failoverCallback = callback;
     const interval = this.config.failover?.heartbeat_interval || 5000;
     const cronExpression = this.intervalToCron(interval);
-    
+
     this.cronJob = cron.schedule(cronExpression, () => {
       this.checkHeartbeats();
     });
 
     this.logger.info('Heartbeat checker started', {
       interval: `${interval}ms`,
-      cron_expression: cronExpression
+      cron_expression: cronExpression,
     });
   }
 
@@ -67,11 +67,10 @@ class HeartbeatChecker {
 
       // Check for failover conditions
       this.checkFailoverConditions();
-
     } catch (error) {
       this.logger.error('Heartbeat check failed', {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
   }
@@ -88,10 +87,10 @@ class HeartbeatChecker {
         } else {
           result = await this.pingMonitor.checkHealth(routerConfig);
         }
-        
+
         results.push({
           method,
-          ...result
+          ...result,
         });
 
         // If any method succeeds, consider router healthy
@@ -99,21 +98,21 @@ class HeartbeatChecker {
           return {
             status: 'healthy',
             method,
-            results
+            results,
           };
         }
       } catch (error) {
         results.push({
           method,
           success: false,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
     return {
       status: 'unhealthy',
-      results
+      results,
     };
   }
 
@@ -125,23 +124,23 @@ class HeartbeatChecker {
       if (this.missedHeartbeats[routerType] > 0) {
         this.logger.info(`${routerType} router recovered`, {
           previous_missed: this.missedHeartbeats[routerType],
-          method: result.method
+          method: result.method,
         });
       }
-      
+
       this.missedHeartbeats[routerType] = 0;
       this[`${routerType}HealthStatus`] = 'healthy';
     } else {
       // Router is unhealthy, increment missed heartbeats
       this.missedHeartbeats[routerType]++;
       this[`${routerType}HealthStatus`] = 'unhealthy';
-      
+
       this.metrics.recordMissedHeartbeat(routerType);
-      
+
       this.logger.warn(`${routerType} router heartbeat missed`, {
         missed_count: this.missedHeartbeats[routerType],
         max_missed: maxMissed,
-        results: result.results
+        results: result.results,
       });
     }
   }
@@ -170,15 +169,17 @@ class HeartbeatChecker {
       } else {
         this.logger.critical('Both primary and backup routers are down!', {
           primary_missed: this.missedHeartbeats.primary,
-          backup_missed: this.missedHeartbeats.backup
+          backup_missed: this.missedHeartbeats.backup,
         });
       }
     }
 
     // Check for failback conditions
-    if (this.config.failover?.auto_failback && 
-        this.primaryHealthStatus === 'healthy' &&
-        this.backupHealthStatus === 'healthy') {
+    if (
+      this.config.failover?.auto_failback &&
+      this.primaryHealthStatus === 'healthy' &&
+      this.backupHealthStatus === 'healthy'
+    ) {
       // Only consider failback if we're currently in failover state
       // This would be managed by the FailoverManager
     }
@@ -186,11 +187,11 @@ class HeartbeatChecker {
 
   triggerFailover(failedRouter) {
     const reason = `${failedRouter} router failed (${this.missedHeartbeats[failedRouter]} missed heartbeats)`;
-    
+
     this.logger.critical('Triggering failover', {
       failed_router: failedRouter,
       missed_heartbeats: this.missedHeartbeats[failedRouter],
-      reason
+      reason,
     });
 
     if (this.failoverCallback) {
@@ -198,7 +199,7 @@ class HeartbeatChecker {
         type: 'failover',
         failedRouter,
         reason,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -207,13 +208,13 @@ class HeartbeatChecker {
     return {
       primary: {
         health: this.primaryHealthStatus,
-        missedHeartbeats: this.missedHeartbeats.primary
+        missedHeartbeats: this.missedHeartbeats.primary,
       },
       backup: {
         health: this.backupHealthStatus,
-        missedHeartbeats: this.missedHeartbeats.backup
+        missedHeartbeats: this.missedHeartbeats.backup,
       },
-      isActive: this.cronJob !== null
+      isActive: this.cronJob !== null,
     };
   }
 

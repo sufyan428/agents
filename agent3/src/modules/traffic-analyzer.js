@@ -1,6 +1,6 @@
 /**
  * Traffic Analysis Module
- * 
+ *
  * Analyzes network traffic patterns to detect:
  * - Traffic anomalies and spikes
  * - DDoS patterns
@@ -23,8 +23,8 @@ class TrafficAnalyzer {
         mean: 0,
         stdDev: 0,
         min: Infinity,
-        max: -Infinity
-      }
+        max: -Infinity,
+      },
     };
 
     // Current traffic data
@@ -34,7 +34,7 @@ class TrafficAnalyzer {
       connections: 0,
       protocolCounts: {},
       portCounts: {},
-      sourceIpCounts: {}
+      sourceIpCounts: {},
     };
 
     // Historical traffic data for trend analysis
@@ -57,7 +57,7 @@ class TrafficAnalyzer {
     }, this.config.monitoring_interval * 1000);
 
     this.logger.info('Traffic analyzer started', {
-      interval_seconds: this.config.monitoring_interval
+      interval_seconds: this.config.monitoring_interval,
     });
   }
 
@@ -89,30 +89,24 @@ class TrafficAnalyzer {
       // Track protocol usage
       if (protocol) {
         const protocolLower = protocol.toLowerCase();
-        this.currentTraffic.protocolCounts[protocolLower] = 
+        this.currentTraffic.protocolCounts[protocolLower] =
           (this.currentTraffic.protocolCounts[protocolLower] || 0) + 1;
       }
 
       // Track port usage (potential port scan detection)
       if (destinationPort) {
-        this.currentTraffic.portCounts[destinationPort] = 
+        this.currentTraffic.portCounts[destinationPort] =
           (this.currentTraffic.portCounts[destinationPort] || 0) + 1;
       }
 
       // Track source IP (potential DDoS or scanning detection)
       if (sourceIp) {
-        this.currentTraffic.sourceIpCounts[sourceIp] = 
+        this.currentTraffic.sourceIpCounts[sourceIp] =
           (this.currentTraffic.sourceIpCounts[sourceIp] || 0) + 1;
       }
 
       // Update metrics
-      this.metrics.recordTraffic(
-        protocol || 'unknown',
-        'ingress',
-        bytes || 0,
-        packets || 0
-      );
-
+      this.metrics.recordTraffic(protocol || 'unknown', 'ingress', bytes || 0, packets || 0);
     } catch (error) {
       this.logger.error('Error processing traffic data:', error);
     }
@@ -128,7 +122,7 @@ class TrafficAnalyzer {
       this.logger.debug('Analyzing traffic patterns', {
         bytes: this.currentTraffic.bytes,
         packets: this.currentTraffic.packets,
-        connections: this.currentTraffic.connections
+        connections: this.currentTraffic.connections,
       });
 
       // Check if baseline is established
@@ -158,7 +152,6 @@ class TrafficAnalyzer {
       // Record check duration
       const duration = (Date.now() - startTime) / 1000;
       this.metrics.recordCheckDuration('traffic_analysis', duration);
-
     } catch (error) {
       this.logger.error('Error analyzing traffic:', error);
     }
@@ -177,7 +170,7 @@ class TrafficAnalyzer {
       this.logger.debug('Updating baseline', {
         sample_count: this.baseline.samples.length,
         required_samples: this.config.baseline_samples,
-        current_value: trafficValue
+        current_value: trafficValue,
       });
 
       // Check if we have enough samples
@@ -190,10 +183,9 @@ class TrafficAnalyzer {
           std_dev: this.baseline.statistics.stdDev,
           min: this.baseline.statistics.min,
           max: this.baseline.statistics.max,
-          samples: this.baseline.samples.length
+          samples: this.baseline.samples.length,
         });
       }
-
     } catch (error) {
       this.logger.error('Error updating baseline:', error);
     }
@@ -210,7 +202,7 @@ class TrafficAnalyzer {
     this.baseline.statistics.mean = sum / samples.length;
 
     // Calculate standard deviation
-    const squaredDiffs = samples.map(value => Math.pow(value - this.baseline.statistics.mean, 2));
+    const squaredDiffs = samples.map((value) => Math.pow(value - this.baseline.statistics.mean, 2));
     const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / samples.length;
     this.baseline.statistics.stdDev = Math.sqrt(avgSquaredDiff);
 
@@ -236,7 +228,7 @@ class TrafficAnalyzer {
       mean: mean,
       std_dev: stdDev,
       z_score: zScore,
-      threshold: this.config.anomaly_threshold
+      threshold: this.config.anomaly_threshold,
     });
 
     // Check if anomaly threshold exceeded
@@ -249,7 +241,7 @@ class TrafficAnalyzer {
         current_bytes: currentBytes,
         expected_mean: mean,
         z_score: zScore,
-        severity: severity
+        severity: severity,
       });
 
       // Record anomaly
@@ -267,11 +259,12 @@ class TrafficAnalyzer {
           expected_mean: mean,
           z_score: zScore.toFixed(2),
           threshold: this.config.anomaly_threshold,
-          recommended_action: anomalyType === 'traffic_spike'
-            ? 'Investigate potential DDoS attack or misconfiguration'
-            : 'Check for network issues or service disruption',
-          timestamp: new Date().toISOString()
-        }
+          recommended_action:
+            anomalyType === 'traffic_spike'
+              ? 'Investigate potential DDoS attack or misconfiguration'
+              : 'Check for network issues or service disruption',
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -281,7 +274,7 @@ class TrafficAnalyzer {
       this.logger.error('Severe traffic spike detected', {
         current_bytes: currentBytes,
         expected_mean: mean,
-        spike_multiplier: spikeMultiplier.toFixed(2)
+        spike_multiplier: spikeMultiplier.toFixed(2),
       });
 
       this.metrics.recordTrafficAnomaly('severe_spike', 'critical');
@@ -296,8 +289,8 @@ class TrafficAnalyzer {
           expected_mean: mean,
           spike_multiplier: spikeMultiplier.toFixed(2),
           recommended_action: 'Immediate investigation required. Possible DDoS attack.',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }
@@ -322,7 +315,7 @@ class TrafficAnalyzer {
       if (portCount > 100) {
         this.logger.warn('Potential port scan detected', {
           source_ip: sourceIp,
-          connection_count: portCount
+          connection_count: portCount,
         });
 
         const severity = portCount > 500 ? 'critical' : 'high';
@@ -340,8 +333,8 @@ class TrafficAnalyzer {
             source_ip: sourceIp,
             connection_count: portCount,
             recommended_action: 'Investigate and consider blocking IP if malicious',
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     }
@@ -364,7 +357,7 @@ class TrafficAnalyzer {
         this.logger.error('Potential DDoS source detected', {
           source_ip: sourceIp,
           connection_count: connectionCount,
-          percentage_of_total: percentageOfTotal.toFixed(2)
+          percentage_of_total: percentageOfTotal.toFixed(2),
         });
 
         // Record threat
@@ -381,8 +374,8 @@ class TrafficAnalyzer {
             connection_count: connectionCount,
             percentage_of_total: percentageOfTotal.toFixed(2),
             recommended_action: 'Immediate action required. Consider rate limiting or blocking IP.',
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     }
@@ -392,7 +385,7 @@ class TrafficAnalyzer {
     if (highVolumeIps.length > 20) {
       this.logger.error('Potential distributed DDoS attack detected', {
         high_volume_ips: highVolumeIps.length,
-        threshold: 20
+        threshold: 20,
       });
 
       this.metrics.recordThreat('distributed_ddos', 'critical');
@@ -406,8 +399,8 @@ class TrafficAnalyzer {
           high_volume_ips: highVolumeIps.length,
           source_ips: highVolumeIps.map(([ip]) => ip),
           recommended_action: 'Critical: Implement rate limiting and DDoS mitigation immediately',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }
@@ -428,7 +421,7 @@ class TrafficAnalyzer {
       if (suspiciousProtocols.includes(protocolLower) && count > 0) {
         this.logger.warn('Suspicious protocol usage detected', {
           protocol: protocol,
-          connection_count: count
+          connection_count: count,
         });
 
         this.metrics.recordThreat('unusual_protocol', 'high');
@@ -442,8 +435,8 @@ class TrafficAnalyzer {
             protocol: protocol,
             connection_count: count,
             recommended_action: 'Investigate protocol usage and block if unauthorized',
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     }
@@ -455,7 +448,7 @@ class TrafficAnalyzer {
       if (percentage > 90 && count > 100) {
         this.logger.warn('Unusual protocol dominance detected', {
           protocol: protocol,
-          percentage: percentage.toFixed(2)
+          percentage: percentage.toFixed(2),
         });
 
         this.metrics.recordTrafficAnomaly('protocol_dominance', 'medium');
@@ -469,8 +462,8 @@ class TrafficAnalyzer {
             protocol: protocol,
             percentage: percentage.toFixed(2),
             recommended_action: 'Investigate if this is expected behavior',
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     }
@@ -487,7 +480,7 @@ class TrafficAnalyzer {
       connections: this.currentTraffic.connections,
       protocols: { ...this.currentTraffic.protocolCounts },
       ports: { ...this.currentTraffic.portCounts },
-      sourceIps: { ...this.currentTraffic.sourceIpCounts }
+      sourceIps: { ...this.currentTraffic.sourceIpCounts },
     };
 
     this.history.push(historyEntry);
@@ -508,7 +501,7 @@ class TrafficAnalyzer {
       connections: 0,
       protocolCounts: {},
       portCounts: {},
-      sourceIpCounts: {}
+      sourceIpCounts: {},
     };
   }
 
@@ -520,10 +513,10 @@ class TrafficAnalyzer {
       baseline: {
         established: this.baseline.established,
         samples_count: this.baseline.samples.length,
-        statistics: this.baseline.statistics
+        statistics: this.baseline.statistics,
       },
       current_traffic: this.currentTraffic,
-      history_size: this.history.length
+      history_size: this.history.length,
     };
   }
 
@@ -538,8 +531,8 @@ class TrafficAnalyzer {
         mean: 0,
         stdDev: 0,
         min: Infinity,
-        max: -Infinity
-      }
+        max: -Infinity,
+      },
     };
 
     this.logger.info('Traffic baseline reset');
