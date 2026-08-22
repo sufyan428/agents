@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/main.js",
     "dev": "node --watch src/main.js",
-    "test": "node --test tests/**/*.js",
+    "test": "node --test \"tests/**/*.js\"",
     "test:watch": "node --test --watch tests/**/*.js"
   },
   "keywords": [

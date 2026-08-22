@@ -1,4 +1,30 @@
 services:
+  # The simulated router every agent points at by default.
+  #
+  # This is what makes `docker compose up` produce a working demo with no
+  # hardware: a real SNMP responder and real syslog, plus a control API for
+  # injecting faults. Replace `host` in router.yml with a real device when you
+  # have one - nothing else changes.
+  router-sim:
+    build:
+      context: ../tools/router-sim
+      dockerfile: Dockerfile
+    container_name: router-sim
+    ports:
+      - "127.0.0.1:1161:1161/udp"
+      - "127.0.0.1:8090:8090"
+    environment:
+      - SIM_SYSLOG_HOST=agent1-monitoring
+      - SIM_SYSLOG_PORTS=5140,5142,5143,5144
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8090/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # Agent 1: Monitoring
   agent1-monitoring:
     build:
@@ -13,6 +39,9 @@ services:
       - ../agent1/logs:/app/logs
     environment:
       - AGENT_API_TOKEN=${AGENT_API_TOKEN:?set AGENT_API_TOKEN}
+    depends_on:
+      router-sim:
+        condition: service_healthy
     networks:
       - router-network
     restart: unless-stopped
@@ -36,6 +65,9 @@ services:
       - ../agent2/data:/app/data
     environment:
       - AGENT_API_TOKEN=${AGENT_API_TOKEN:?set AGENT_API_TOKEN}
+    depends_on:
+      router-sim:
+        condition: service_healthy
     networks:
       - router-network
     restart: unless-stopped
@@ -60,6 +92,9 @@ services:
       - ../agent3/logs:/app/logs
     environment:
       - AGENT_API_TOKEN=${AGENT_API_TOKEN:?set AGENT_API_TOKEN}
+    depends_on:
+      router-sim:
+        condition: service_healthy
     networks:
       - router-network
     restart: unless-stopped
@@ -82,6 +117,9 @@ services:
       - ../agent4/logs:/app/logs
     environment:
       - AGENT_API_TOKEN=${AGENT_API_TOKEN:?set AGENT_API_TOKEN}
+    depends_on:
+      router-sim:
+        condition: service_healthy
     networks:
       - router-network
     restart: unless-stopped
@@ -106,6 +144,9 @@ services:
       - ../agent5/configs:/app/configs
     environment:
       - AGENT_API_TOKEN=${AGENT_API_TOKEN:?set AGENT_API_TOKEN}
+    depends_on:
+      router-sim:
+        condition: service_healthy
     networks:
       - router-network
     restart: unless-stopped

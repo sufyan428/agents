@@ -1,11 +1,6 @@
 const { declareSimulated, markSimulated } = require('@ragent/agent-common');
 
 declareSimulated(
-  'agent5.checkSyslogPattern',
-  'Returns compliant without inspecting any syslog history.',
-  'a syslog history store to query'
-);
-declareSimulated(
   'agent5.checkConfiguration',
   'Returns compliant without reading the device configuration.',
   'a NETCONF or RESTCONF read of the running config'
@@ -17,7 +12,11 @@ const logger = require('../utils/logger');
 const snmpClient = require('../utils/snmpClient');
 
 class PolicyChecker {
-  constructor(config) {
+  constructor(config, syslogListener = null) {
+    // Supplied by the agent so policy checks can query real received syslog.
+    // Without it the syslog policy type reports that it could not be evaluated,
+    // rather than quietly passing.
+    this.syslogListener = syslogListener;
     this.config = config;
     this.policies = [];
     this.violations = [];
@@ -146,21 +145,88 @@ class PolicyChecker {
   }
 
   /**
-   * SIMULATED. Inspects nothing and returns compliant.
+   * Evaluates a syslog policy against messages actually received.
    *
-   * Returning `compliant: true` from a check that never ran is the most
-   * dangerous shape of fake data in this framework: it becomes a clean
-   * compliance report, which agent8 then narrates to an operator as fact.
-   * The result now carries the simulated marker so nothing downstream can
-   * mistake it for a verified pass.
+   * This used to return `compliant: true` unconditionally - the most dangerous
+   * shape of fake data in the framework, because a clean compliance result is
+   * exactly what a report narrates to an operator as fact. The listener was
+   * already retaining messages; nothing was ever asking it.
+   *
+   * A policy declares a `pattern` and an `expectation`:
+   *   absent  (default) - compliant when the pattern does NOT appear
+   *   present           - compliant when it does
+   *
+   * `withinMinutes` bounds the window; `maxOccurrences` allows a threshold
+   * rather than a binary.
    */
   async checkSyslogPattern(router, policy) {
+    if (!this.syslogListener) {
+      // Not compliant and not a violation - simply not evaluated. Saying so is
+      // the honest answer; claiming a pass is not.
+      return {
+        compliant: null,
+        verified: false,
+        currentValue: 'no syslog listener available',
+        violation: null,
+        notEvaluated: 'this check needs a syslog listener; none was provided'
+      };
+    }
+
+    const pattern = policy.pattern || policy.expectedValue;
+    if (!pattern) {
+      return {
+        compliant: null,
+        verified: false,
+        currentValue: 'policy has no pattern',
+        violation: null,
+        notEvaluated: 'syslog policies require a "pattern"'
+      };
+    }
+
+    const windowMinutes = policy.withinMinutes ?? 60;
+    const cutoff = Date.now() - windowMinutes * 60 * 1000;
+    const expectation = policy.expectation || 'absent';
+    const maxOccurrences = policy.maxOccurrences ?? 0;
+
+    let regex;
+    try {
+      regex = new RegExp(pattern, 'i');
+    } catch (error) {
+      return {
+        compliant: null,
+        verified: false,
+        currentValue: `invalid pattern: ${error.message}`,
+        violation: null,
+        notEvaluated: 'the policy pattern is not a valid regular expression'
+      };
+    }
+
+    const host = router.host || router.name;
+    const candidates = this.syslogListener
+      .getMessages(null, 1000)
+      .filter((m) => {
+        const ts = new Date(m.timestamp || m.receivedAt || 0).getTime();
+        if (Number.isFinite(ts) && ts < cutoff) return false;
+        if (host && m.hostname && m.hostname !== host && m.source !== host) return false;
+        return regex.test(m.message || '');
+      });
+
+    const count = candidates.length;
+    const compliant = expectation === 'present'
+      ? count > 0
+      : count <= maxOccurrences;
+
     return {
-      ...markSimulated('agent5.checkSyslogPattern', logger),
-      compliant: true,
-      verified: false,
-      currentValue: 'N/A',
-      violation: null
+      compliant,
+      verified: true,
+      currentValue: `${count} match(es) in the last ${windowMinutes}m`,
+      matchCount: count,
+      sampleMatch: candidates.length ? String(candidates[candidates.length - 1].message).slice(0, 200) : null,
+      violation: compliant
+        ? null
+        : expectation === 'present'
+          ? `${policy.description || pattern}: expected at least one match in the last ${windowMinutes}m, found none`
+          : `${policy.description || pattern}: found ${count} match(es) in the last ${windowMinutes}m (limit ${maxOccurrences})`
     };
   }
 

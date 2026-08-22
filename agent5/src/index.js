@@ -48,7 +48,8 @@ class AutomationGovernanceAgent {
       this.metrics = new Metrics(this.config);
 
       // Initialize modules
-      this.policyChecker = new PolicyChecker(this.config);
+      // The policy checker queries real received syslog for syslog-type policies.
+      this.policyChecker = new PolicyChecker(this.config, this.syslogListener);
       await this.policyChecker.loadPolicies();
 
       this.configManager = new ConfigManager(this.config);
@@ -72,6 +73,11 @@ class AutomationGovernanceAgent {
       if (this.config.syslog?.enabled) {
         this.syslogListener = new SyslogListener(this.config);
         this.syslogListener.start();
+        // The policy checker is constructed before this point, so it is given
+        // the listener here rather than in its constructor. Without this the
+        // syslog policy type would report "not evaluated" forever - which is
+        // at least honest, but useless.
+        this.policyChecker.syslogListener = this.syslogListener;
       }
 
       // Schedule automated tasks

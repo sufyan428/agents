@@ -84,14 +84,15 @@ curl -s localhost:9093/health | jq '.simulated, .checks[] | select(.name=="simul
 | 3 security | Syslog auth-failure and port-scan detection | Real | Real parsing of real input |
 | 3 security | SNMP trap ingestion | Partial | |
 | 3 security | **Config validation** | **Simulated** | Validates a generated placeholder, not the device config |
-| 3 security | Traffic volume analysis | Simulated | Syslog carries no volume data. Needs NetFlow/sFlow/IPFIX |
+| 3 security | Traffic volume analysis | Simulated | Syslog carries no volume data; no volume is now fabricated. Needs NetFlow/sFlow/IPFIX |
 | 4 performance | ICMP latency / jitter / loss | Real | Falls back to generated values only when unreachable |
 | 4 performance | SNMP performance counters | Partial | Falls back to generated values when unreachable |
 | 4 performance | **QoS class metrics** | **Simulated** | No real collection path exists. Needs CISCO-CLASS-BASED-QOS-MIB |
 | 4 performance | Traffic distribution / balancing | Simulated | Needs interface counter deltas or flow data |
 | 4 performance | Applying an optimisation | Simulated | Reports applied; configures nothing |
 | 5 governance | SNMP-based policy checks | Partial | Real SNMP gets, compared against policy |
-| 5 governance | **Syslog and configuration policy checks** | **Simulated** | Return `compliant: true` without checking |
+| 5 governance | Syslog policy checks | Real | Evaluates real received syslog against a pattern, window and threshold |
+| 5 governance | **Configuration policy checks** | **Simulated** | Returns `compliant: null` (not evaluated) - needs NETCONF/RESTCONF |
 | 5 governance | Config backup | Partial | |
 | 5 governance | Self-healing writes | Real, gated | Genuinely writes SNMP. Off by default, allowlisted, dry-run by default |
 | 5 governance | Firmware / CVE check | Simulated | Hardcoded version table, no advisory feed |
