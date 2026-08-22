@@ -6,12 +6,24 @@
   "author": "sufiyansrepos",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "agent1",
+    "agent2",
+    "agent3",
+    "agent4",
+    "agent5",
+    "agent6",
+    "agent7",
+    "agent8",
+    "agent9",
+    "agent10"
   ],
   "scripts": {
     "build": "npm run build -w @ragent/agent-protocol && npm run build -w @ragent/ai-core && npm run build -w @ragent/agent-common",
-    "test": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common",
-    "clean": "npm run clean --workspaces --if-present"
+    "test": "npm run build && npm run test:packages && npm run test:agents",
+    "clean": "npm run clean --workspaces --if-present",
+    "test:packages": "npm run test -w @ragent/agent-protocol && npm run test -w @ragent/ai-core && npm run test -w @ragent/agent-common",
+    "test:agents": "npm test -w agent1 --if-present && npm test -w agent2 --if-present && npm test -w agent3 --if-present && npm test -w agent4 --if-present && npm test -w agent5 --if-present && npm test -w agent7 --if-present && npm test -w agent8 --if-present && npm test -w agent9 --if-present && npm test -w agent10 --if-present"
   },
   "engines": {
     "node": ">=18.0.0"

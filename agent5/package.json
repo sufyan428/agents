@@ -21,16 +21,18 @@
   "author": "sufiyansrepos",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
+    "@ragent/agent-common": "0.1.0",
+    "@ragent/agent-protocol": "0.1.0",
+    "axios": "^1.8.4",
+    "express": "^4.21.2",
+    "joi": "^17.13.3",
     "net-snmp": "^3.9.1",
-    "prom-client": "^15.1.0",
-    "node-cron": "^3.0.3",
-    "axios": "^1.6.2",
-    "winston": "^3.11.0",
-    "yaml": "^2.3.4",
-    "ssh2": "^1.15.0",
+    "node-cron": "^4.2.1",
+    "prom-client": "^15.1.3",
+    "ssh2": "^1.16.0",
+    "winston": "^3.17.0",
     "xml2js": "^0.6.2",
-    "joi": "^17.11.0"
+    "yaml": "^2.3.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

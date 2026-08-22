@@ -31,8 +31,12 @@ class Orchestrator {
 
             // Start API Gateway
             const apiPort = masterConfig.orchestrator.api_port;
-            logger.info(`Starting API Gateway on port ${apiPort}...`);
-            await apiGateway.start(apiPort);
+            // Loopback unless deliberately overridden. The gateway can stop
+            // every agent in the framework, so it does not get exposed to the
+            // network by default.
+            const apiHost = process.env.BIND_HOST || masterConfig.orchestrator.bind_host || '127.0.0.1';
+            logger.info(`Starting API Gateway on ${apiHost}:${apiPort}...`);
+            await apiGateway.start(apiPort, apiHost);
 
             // Start all enabled agents
             logger.info('Starting all enabled agents...');
@@ -48,9 +52,9 @@ class Orchestrator {
             logger.info('='.repeat(60));
             logger.info('Router Framework Orchestrator - Started Successfully');
             logger.info('='.repeat(60));
-            logger.info(`API Gateway: http://localhost:${apiPort}`);
-            logger.info(`Health Check: http://localhost:${apiPort}/health`);
-            logger.info(`System Overview: http://localhost:${apiPort}/api/overview`);
+            logger.info(`API Gateway: http://${apiHost}:${apiPort}`);
+            logger.info(`Health Check: http://${apiHost}:${apiPort}/health`);
+            logger.info(`System Overview: http://${apiHost}:${apiPort}/api/overview`);
             logger.info('='.repeat(60));
 
         } catch (error) {

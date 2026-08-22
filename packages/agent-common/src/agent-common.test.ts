@@ -330,3 +330,11 @@ test('an oversized body is rejected', async () => {
     },
   );
 });
+
+test('close() is idempotent and safe to call twice', async () => {
+  const s = createServer({ agent: 'x', port: 0, logger: silent });
+  await s.listen();
+  await s.close();
+  await s.close(); // must not throw or hang
+  assert.ok(true);
+});

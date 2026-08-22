@@ -4,6 +4,11 @@ const fs = require('fs');
 const axios = require('axios');
 const logger = require('./utils/logger');
 
+const MAX_RESTARTS = 5;
+const RESTART_BASE_DELAY_MS = 2000;
+/** Uptime after which an agent is considered stable and its crash count resets. */
+const STABLE_AFTER_MS = 60_000;
+
 class AgentManager {
     constructor() {
         this.agents = new Map();
@@ -155,11 +160,20 @@ class AgentManager {
         try {
             logger.info(`Starting agent: ${agentName}`);
 
-            const child = spawn(agent.startCommand, agent.startArgs, {
+            // shell:false. With a shell, kill() terminated the shell and left
+            // the real node process orphaned, still holding its port - which is
+            // why a stale-port cleanup hook had to exist. On Windows npm is a
+            // .cmd, so the command is resolved explicitly instead.
+            // detached:true puts the child in its own process group, so a stop
+            // can signal the whole tree rather than just the immediate child.
+            const isWindows = process.platform === 'win32';
+            const command = agent.startCommand === 'npm' && isWindows ? 'npm.cmd' : agent.startCommand;
+
+            const child = spawn(command, agent.startArgs, {
                 cwd: agent.path,
                 stdio: ['ignore', 'pipe', 'pipe'],
-                detached: false,
-                shell: true,
+                detached: !isWindows,
+                shell: false,
                 env: {
                     ...process.env,
                     PORT: String(agent.port),
@@ -185,13 +199,36 @@ class AgentManager {
                 logger.warn(`Agent ${agentName} exited with code ${code}, signal ${signal}`);
                 agent.status = 'stopped';
                 agent.process = null;
-
-                // Auto-restart if configured
-                if (code !== 0 && agent.restartCount < 3) {
-                    logger.info(`Auto-restarting ${agentName} (attempt ${agent.restartCount + 1}/3)`);
-                    agent.restartCount++;
-                    setTimeout(() => this.startAgent(agentName), 5000);
+                if (agent.healthyTimer) {
+                    clearTimeout(agent.healthyTimer);
+                    agent.healthyTimer = null;
                 }
+
+                // A deliberate stop must stay stopped. Previously the guard was
+                // `code !== 0`, and a SIGTERM exit reports code null - so
+                // stopping an agent through the API restarted it 5s later.
+                if (agent.intentionalStop) {
+                    agent.intentionalStop = false;
+                    return;
+                }
+
+                if (agent.restartCount >= MAX_RESTARTS) {
+                    logger.error(
+                        `Agent ${agentName} has crashed ${agent.restartCount} times; not restarting again. ` +
+                        'Fix the underlying fault and start it explicitly.'
+                    );
+                    agent.status = 'failed';
+                    return;
+                }
+
+                agent.restartCount++;
+                // Exponential backoff. A crash-looping agent previously retried
+                // on a flat 5s timer, which just filled the logs faster.
+                const delay = Math.min(RESTART_BASE_DELAY_MS * 2 ** (agent.restartCount - 1), 60_000);
+                logger.info(
+                    `Auto-restarting ${agentName} in ${delay}ms (attempt ${agent.restartCount}/${MAX_RESTARTS})`
+                );
+                agent.restartTimer = setTimeout(() => this.startAgent(agentName), delay);
             });
 
             agent.process = child;
@@ -204,6 +241,18 @@ class AgentManager {
                     logger.info(`Agent ${agentName} started successfully on port ${agent.port}`);
                 }
             }, 3000);
+
+            // An agent that stays up is no longer crash-looping, so its restart
+            // budget is returned. Previously restartCount only ever increased,
+            // so an agent that crashed three times months apart would never be
+            // auto-restarted again.
+            agent.healthyTimer = setTimeout(() => {
+                if (agent.status === 'running' && agent.restartCount > 0) {
+                    logger.info(`Agent ${agentName} stable for 60s, resetting its restart counter`);
+                    agent.restartCount = 0;
+                }
+            }, STABLE_AFTER_MS);
+            agent.healthyTimer.unref?.();
 
             return true;
         } catch (error) {
@@ -231,16 +280,35 @@ class AgentManager {
         try {
             logger.info(`Stopping agent: ${agentName}`);
 
-            if (agent.process) {
-                agent.process.kill('SIGTERM');
+            // Marks this as deliberate so the exit handler does not treat it as
+            // a crash and restart the agent five seconds later.
+            agent.intentionalStop = true;
 
-                // Force kill after 10 seconds if not stopped
-                setTimeout(() => {
-                    if (agent.process && !agent.process.killed) {
-                        logger.warn(`Force killing agent ${agentName}`);
-                        agent.process.kill('SIGKILL');
+            if (agent.restartTimer) {
+                clearTimeout(agent.restartTimer);
+                agent.restartTimer = null;
+            }
+            if (agent.healthyTimer) {
+                clearTimeout(agent.healthyTimer);
+                agent.healthyTimer = null;
+            }
+
+            const child = agent.process;
+            if (child) {
+                this.signalTree(child, 'SIGTERM', agentName);
+
+                // Escalate if it has not exited. This previously never ran:
+                // agent.process was set to null immediately below, so by the
+                // time the timer fired the guard `if (agent.process ...)` was
+                // always false and SIGKILL was unreachable.
+                const force = setTimeout(() => {
+                    if (child.exitCode === null && child.signalCode === null) {
+                        logger.warn(`Agent ${agentName} ignored SIGTERM, sending SIGKILL`);
+                        this.signalTree(child, 'SIGKILL', agentName);
                     }
                 }, 10000);
+                force.unref?.();
+                child.once('exit', () => clearTimeout(force));
             }
 
             agent.status = 'stopped';
@@ -250,6 +318,34 @@ class AgentManager {
         } catch (error) {
             logger.error(`Failed to stop agent ${agentName}: ${error.message}`);
             throw error;
+        }
+    }
+
+    /**
+     * Signals the child's whole process group where the platform supports it.
+     *
+     * `npm start` spawns node as a grandchild, so signalling only the immediate
+     * child leaves the actual agent running and holding its port. On POSIX the
+     * child is detached into its own group and the negated pid reaches all of
+     * it; Windows has no process groups, so taskkill /T does the same job.
+     */
+    signalTree(child, signal, agentName) {
+        if (!child || child.pid === undefined) return;
+        try {
+            if (process.platform === 'win32') {
+                const { execFileSync } = require('child_process');
+                const args = ['/pid', String(child.pid), '/T'];
+                if (signal === 'SIGKILL') args.push('/F');
+                execFileSync('taskkill', args, { stdio: 'ignore' });
+            } else {
+                process.kill(-child.pid, signal);
+            }
+        } catch (error) {
+            // ESRCH simply means it already exited between the check and the signal.
+            if (error.code !== 'ESRCH') {
+                logger.debug(`Could not signal ${agentName} process tree: ${error.message}`);
+            }
+            try { child.kill(signal); } catch { /* already gone */ }
         }
     }
 

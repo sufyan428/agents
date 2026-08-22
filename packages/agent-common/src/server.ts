@@ -232,10 +232,18 @@ export function createServer(opts: ServerOptions): AgentServer {
 
     close(): Promise<void> {
       return new Promise((resolve) => {
-        if (!server) return resolve();
-        server.close(() => resolve());
-        // Keep-alive sockets otherwise hold the process open past close().
-        server.closeAllConnections?.();
+        const s = server;
+        if (!s || !s.listening) {
+          server = undefined;
+          return resolve();
+        }
+        server = undefined; // idempotent: a second close() is a no-op
+
+        // Drop keep-alive sockets FIRST. They otherwise hold the process open
+        // past close(), and tearing them down after close() has already begun
+        // trips a libuv assertion on Windows.
+        s.closeAllConnections?.();
+        s.close(() => resolve());
       });
     },
   };
@@ -290,7 +298,20 @@ export function installShutdown(opts: ShutdownOptions): void {
 
     clearTimeout(forced);
     logger.info('Shutdown complete');
-    process.exit(0);
+
+    // Deliberately NOT process.exit(). Calling it here truncates pending I/O -
+    // including the log write immediately above - and on Windows, exiting while
+    // libuv handles are still closing trips
+    //   Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src/win/async.c
+    // on every clean shutdown. Setting exitCode and letting the loop drain is
+    // both correct and quiet. The unref'd timer below does not hold the process
+    // open, but will still fire and force the exit if something else does.
+    process.exitCode = 0;
+    const grace = setTimeout(() => {
+      logger.warn('Event loop still busy after shutdown; forcing exit');
+      process.exit(0);
+    }, 2000);
+    grace.unref();
   };
 
   process.on('SIGTERM', () => void run('SIGTERM'));

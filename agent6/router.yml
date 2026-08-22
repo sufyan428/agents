@@ -98,6 +98,10 @@ agents:
 # Orchestrator Configuration
 orchestrator:
   api_port: 8080
+  # Loopback by default. The gateway can start, stop and restart every agent,
+  # so exposing it beyond this host must be a deliberate act - and if you do,
+  # put authentication and TLS in front of it. Override with BIND_HOST.
+  bind_host: "127.0.0.1"
   health_check_interval: 10           # seconds
   auto_restart_failed_agents: true
   log_level: "info"                   # debug, info, warn, error

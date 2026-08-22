@@ -375,43 +375,48 @@ class ConfigManager {
     distributeConfigs() {
         try {
             const agentsDir = path.join(__dirname, '..', '..');
+            const results = [];
 
             // Agent 1 config
             const agent1Config = this.generateAgent1Config();
             const agent1Path = path.join(agentsDir, 'agent1', 'config', 'router.yml');
-            this.writeConfig(agent1Path, agent1Config);
+            results.push(this.writeConfig(agent1Path, agent1Config));
             logger.info('Agent 1 configuration distributed');
 
             // Agent 2 config
             const agent2Config = this.generateAgent2Config();
             const agent2Path = path.join(agentsDir, 'agent2', 'config', 'router.yml');
-            this.writeConfig(agent2Path, agent2Config);
+            results.push(this.writeConfig(agent2Path, agent2Config));
             logger.info('Agent 2 configuration distributed');
 
             // Agent 3 config
             const agent3Config = this.generateAgent3Config();
             const agent3Path = path.join(agentsDir, 'agent3', 'config', 'router.yml');
-            this.writeConfig(agent3Path, agent3Config);
+            results.push(this.writeConfig(agent3Path, agent3Config));
             logger.info('Agent 3 configuration distributed');
 
             // Agent 4 config
             const agent4Config = this.generateAgent4Config();
             const agent4Path = path.join(agentsDir, 'agent4', 'router.yml');
-            this.writeConfig(agent4Path, agent4Config);
+            results.push(this.writeConfig(agent4Path, agent4Config));
             logger.info('Agent 4 configuration distributed');
 
             // Agent 5 config (router.yml: routers list, config.yml: app/server settings)
             const agent5Config = this.generateAgent5Config();
             const agent5Path = path.join(agentsDir, 'agent5', 'router.yml');
-            this.writeConfig(agent5Path, agent5Config);
+            results.push(this.writeConfig(agent5Path, agent5Config));
 
             const agent5AppConfig = this.generateAgent5AppConfig();
             const agent5AppConfigPath = path.join(agentsDir, 'agent5', 'config.yml');
-            this.writeConfig(agent5AppConfigPath, agent5AppConfig);
+            results.push(this.writeConfig(agent5AppConfigPath, agent5AppConfig));
             logger.info('Agent 5 configuration distributed');
 
-            logger.info('All configurations distributed successfully');
-            return true;
+            const written = results.filter(Boolean).length;
+            const unchanged = results.length - written;
+            logger.info(
+                `Configuration distribution complete: ${written} written, ${unchanged} unchanged`
+            );
+            return { written, unchanged };
         } catch (error) {
             logger.error(`Failed to distribute configurations: ${error.message}`);
             throw error;
@@ -419,7 +424,14 @@ class ConfigManager {
     }
 
     /**
-     * Write configuration to file
+     * Writes a distributed config, but only when the content actually changed.
+     *
+     * Previously every boot rewrote all six agent config files unconditionally
+     * and without a backup, so any hand-edit was silently destroyed on the next
+     * restart. Now an unchanged file is left alone, and a changed one leaves a
+     * .bak of what it replaced.
+     *
+     * Returns true when the file was written.
      */
     writeConfig(filePath, config) {
         const dir = path.dirname(filePath);
@@ -428,7 +440,44 @@ class ConfigManager {
         }
 
         const yamlStr = yaml.dump(config);
+
+        if (fs.existsSync(filePath)) {
+            const current = fs.readFileSync(filePath, 'utf8');
+            if (current === yamlStr) {
+                logger.debug(`Config unchanged, leaving alone: ${filePath}`);
+                return false;
+            }
+            fs.copyFileSync(filePath, `${filePath}.bak`);
+            logger.info(`Config changed, previous version saved to ${path.basename(filePath)}.bak`);
+        }
+
         fs.writeFileSync(filePath, yamlStr, 'utf8');
+        return true;
+    }
+
+    /**
+     * The master config with every secret removed.
+     *
+     * The previous implementation redacted only the two SNMP community strings
+     * and returned grafana.admin_password in clear text over an unauthenticated
+     * endpoint. This walks the whole tree instead, so a secret added to
+     * router.yml later cannot be missed.
+     */
+    getRedactedConfig() {
+        if (!this.masterConfig) this.loadMasterConfig();
+
+        const SECRET_KEY = /pass|secret|token|community|credential|api[_-]?key|private/i;
+        const walk = (value) => {
+            if (value === null || typeof value !== 'object') return value;
+            if (Array.isArray(value)) return value.map(walk);
+            const out = {};
+            for (const [k, v] of Object.entries(value)) {
+                out[k] = SECRET_KEY.test(k) ? '[redacted]' : walk(v);
+            }
+            return out;
+        };
+
+        return walk(JSON.parse(JSON.stringify(this.masterConfig)));
     }
 
     /**
