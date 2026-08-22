@@ -2,6 +2,7 @@ const { createServer } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const agentManager = require('./agent-manager');
 const configManager = require('./config-manager');
+const correlationEngine = require('./correlation');
 
 /**
  * Orchestrator API gateway.
@@ -79,6 +80,15 @@ class APIGateway {
                     overview.agents[name] = { ...status, healthy: health[name]?.healthy || false };
                 }
                 res.json({ success: true, overview });
+            } catch (err) { next(err); }
+        });
+
+        // Deterministic cross-agent incidents. Available with no API key and
+        // no model - this is the framework's own correlation, which agent7
+        // enriches rather than provides.
+        app.get('/api/incidents', (req, res, next) => {
+            try {
+                res.json({ success: true, ...correlationEngine.snapshot() });
             } catch (err) { next(err); }
         });
 

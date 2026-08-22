@@ -12,6 +12,7 @@ import {
   declareSimulated, markSimulated, simulatedPaths, usedSimulatedPaths,
   simulationHealthCheck, resetSimulationRegistry,
 } from './simulation';
+import { FindingStore } from './findings';
 
 /* -------------------------------- logging -------------------------------- */
 
@@ -392,4 +393,98 @@ test('usedSimulatedPaths only lists paths actually exercised', () => {
   markSimulated('a.one');
   assert.equal(usedSimulatedPaths().length, 1);
   assert.equal(usedSimulatedPaths()[0]?.id, 'a.one');
+});
+
+/* -------------------------------- findings ------------------------------- */
+
+const sampleFinding = (over: Record<string, unknown> = {}) => ({
+  agent: 'agent1-monitoring',
+  kind: 'cpu_threshold_exceeded',
+  severity: 'high' as const,
+  entity: { type: 'router', id: '10.0.0.1', name: 'R1' },
+  title: 'CPU above baseline',
+  ...over,
+});
+
+test('a recurring condition updates one finding rather than creating many', () => {
+  // Without this the correlation engine downstream sees a thousand findings
+  // for one ongoing problem and groups noise instead of incidents.
+  const store = new FindingStore();
+  const first = store.report(sampleFinding());
+  assert.equal(first.isNew, true);
+  for (let i = 0; i < 20; i++) store.report(sampleFinding());
+  assert.equal(store.activeCount, 1);
+  assert.equal(store.list()[0]?.count, 21);
+});
+
+test('different entities and kinds are tracked separately', () => {
+  const store = new FindingStore();
+  store.report(sampleFinding());
+  store.report(sampleFinding({ kind: 'memory_threshold_exceeded' }));
+  store.report(sampleFinding({ entity: { type: 'router', id: '10.0.0.2' } }));
+  assert.equal(store.activeCount, 3);
+});
+
+test('severity escalates on the existing finding but never de-escalates', () => {
+  const store = new FindingStore();
+  store.report(sampleFinding({ severity: 'medium' }));
+  store.report(sampleFinding({ severity: 'critical' }));
+  assert.equal(store.list()[0]?.severity, 'critical');
+  store.report(sampleFinding({ severity: 'low' }));
+  assert.equal(store.list()[0]?.severity, 'critical', 'must not silently downgrade');
+});
+
+test('an explicit clear resolves the finding and records duration', () => {
+  const store = new FindingStore();
+  const t0 = new Date('2026-01-01T00:00:00Z');
+  store.report(sampleFinding(), t0);
+  const cleared = store.clear('agent1-monitoring', 'cpu_threshold_exceeded',
+    { type: 'router', id: '10.0.0.1' }, 'recovered', new Date('2026-01-01T00:05:00Z'));
+  assert.equal(cleared, true);
+  assert.equal(store.activeCount, 0);
+  const [res] = store.recentlyResolved();
+  assert.equal(res?.reason, 'recovered');
+  assert.equal(res?.durationMs, 300_000);
+});
+
+test('sweep resolves findings that stopped recurring, and only those', () => {
+  const store = new FindingStore({ resolveAfterMs: 300_000 });
+  const t0 = new Date('2026-01-01T00:00:00Z');
+  store.report(sampleFinding(), t0);
+  store.report(sampleFinding({ kind: 'link_down' }), t0);
+
+  // One keeps recurring, the other goes quiet.
+  const t4 = new Date('2026-01-01T00:04:00Z');
+  store.report(sampleFinding({ kind: 'link_down' }), t4);
+
+  const resolved = store.sweep(new Date('2026-01-01T00:06:00Z'));
+  assert.equal(resolved.length, 1);
+  assert.equal(resolved[0]?.finding.kind, 'cpu_threshold_exceeded');
+  assert.equal(store.activeCount, 1, 'the still-recurring one stays active');
+});
+
+test('the store is bounded', () => {
+  const store = new FindingStore({ maxActive: 10 });
+  for (let i = 0; i < 50; i++) {
+    store.report(sampleFinding({ entity: { type: 'router', id: `10.0.0.${i}` } }));
+  }
+  assert.ok(store.activeCount <= 10);
+});
+
+test('listing sorts by severity and filters by a floor', () => {
+  const store = new FindingStore();
+  store.report(sampleFinding({ kind: 'a', severity: 'low' }));
+  store.report(sampleFinding({ kind: 'b', severity: 'critical' }));
+  store.report(sampleFinding({ kind: 'c', severity: 'medium' }));
+  assert.equal(store.list()[0]?.severity, 'critical');
+  assert.equal(store.list('medium').length, 2);
+});
+
+test('a simulated finding marks the whole store', () => {
+  const store = new FindingStore();
+  store.report(sampleFinding());
+  assert.equal(store.hasSimulated, false);
+  store.report(sampleFinding({ kind: 'qos_violation', simulated: true }));
+  assert.equal(store.hasSimulated, true);
+  assert.equal(store.summary().simulated, true);
 });

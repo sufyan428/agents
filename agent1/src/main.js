@@ -3,7 +3,8 @@
  * Orchestrates collectors, processors, and alerts
  */
 
-const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck, FindingStore, mountFindingsRoute } = require('@ragent/agent-common');
+const BaselineProcessor = require('./processors/baselineProcessor');
 const logger = require('./utils/logger');
 const config = require('./utils/config');
 const prometheus = require('./utils/prometheus');
@@ -13,6 +14,9 @@ const { thresholdProcessor } = require('./processors');
 class MonitoringAgent {
   constructor() {
     this.server = null;
+    // Normalized findings, polled by agent6 for cross-agent correlation.
+    this.findings = new FindingStore({ resolveAfterMs: 5 * 60 * 1000 });
+    this.baselineProcessor = null;
     this.app = null;
     this.port = Number(process.env.PORT) || 3000;
     // Loopback by default. This listener exposes metrics, alert history and a
@@ -35,6 +39,13 @@ class MonitoringAgent {
 
       // Initialize Prometheus metrics
       logger.info('Prometheus metrics initialized');
+
+      // Baseline-aware processing, built after config so it can read the
+      // configured thresholds.
+      this.baselineProcessor = new BaselineProcessor({
+        findingStore: this.findings,
+        thresholds: config.thresholds
+      });
 
       // Initialize collectors
       snmpCollector.initialize();
@@ -79,6 +90,8 @@ class MonitoringAgent {
         },
         alertStats: alertManager.getAlertStats(),
         activeConditions: alertManager.getActiveConditions(),
+        findings: this.findings.summary(),
+        baselines: this.baselineProcessor ? this.baselineProcessor.describe() : null,
         thresholds: thresholdProcessor.getThresholds()
       });
     });
@@ -132,8 +145,26 @@ class MonitoringAgent {
           const metrics = await snmpCollector.collect(router.name);
           
           if (metrics) {
-            // Process metrics against thresholds
+            // Configured thresholds still drive alert delivery.
             thresholdProcessor.processSNMPMetrics(metrics);
+
+            // Baselining runs alongside and emits normalized findings, which
+            // is what agent6 correlates and what catches a departure from
+            // normal that never crosses a configured line.
+            const at = new Date();
+            if (metrics.cpu !== null && metrics.cpu !== undefined) {
+              this.baselineProcessor.process(router.name, 'cpu', Number(metrics.cpu), { unit: '%', at });
+            }
+            if (metrics.memory !== null && metrics.memory !== undefined) {
+              this.baselineProcessor.process(router.name, 'memory', Number(metrics.memory), { unit: '%', at });
+            }
+            for (const iface of metrics.interfaces || []) {
+              if (Number.isFinite(Number(iface.errors))) {
+                this.baselineProcessor.process(
+                  `${router.name}/${iface.name}`, 'interface_errors', Number(iface.errors), { at }
+                );
+              }
+            }
           }
 
           // Process failed logins from syslog
@@ -165,6 +196,11 @@ class MonitoringAgent {
       alertManager.sweepResolved().catch((err) =>
         logger.error(`Resolution sweep failed: ${err.message}`)
       );
+      // Findings that stopped recurring are resolved too, so agent6 sees an
+      // incident end rather than only ever seeing it begin.
+      for (const r of this.findings.sweep()) {
+        logger.info(`Finding resolved: ${r.finding.title} after ${Math.round(r.durationMs / 1000)}s`);
+      }
     }, 60000);
 
     this.running = true;
@@ -220,6 +256,7 @@ class MonitoringAgent {
 
       this.app = this.server.app;
       this.setupRoutes(this.app);
+      mountFindingsRoute(this.app, this.findings, 'agent1-monitoring');
       await this.server.listen();
       logger.info(`Status at http://${this.host}:${this.port}/status`);
 

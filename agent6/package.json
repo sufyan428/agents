@@ -25,6 +25,7 @@
   "dependencies": {
     "@ragent/agent-common": "0.1.0",
     "@ragent/agent-protocol": "0.1.0",
+    "@ragent/analytics": "0.1.0",
     "axios": "^1.8.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

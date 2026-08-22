@@ -5,6 +5,7 @@ const logger = require('./utils/logger');
 const configManager = require('./config-manager');
 const agentManager = require('./agent-manager');
 const apiGateway = require('./api-gateway');
+const correlationEngine = require('./correlation');
 
 class Orchestrator {
     constructor() {
@@ -47,6 +48,10 @@ class Orchestrator {
             logger.info(`Starting health monitoring (interval: ${healthInterval}ms)...`);
             agentManager.startHealthMonitoring(healthInterval);
 
+            // Deterministic correlation across every agent's findings. Runs
+            // whether or not the AI layer is configured.
+            correlationEngine.start();
+
             this.running = true;
 
             logger.info('='.repeat(60));
@@ -55,6 +60,7 @@ class Orchestrator {
             logger.info(`API Gateway: http://${apiHost}:${apiPort}`);
             logger.info(`Health Check: http://${apiHost}:${apiPort}/health`);
             logger.info(`System Overview: http://${apiHost}:${apiPort}/api/overview`);
+            logger.info(`Incidents:       http://${apiHost}:${apiPort}/api/incidents`);
             logger.info('='.repeat(60));
 
         } catch (error) {
@@ -74,6 +80,7 @@ class Orchestrator {
         try {
             // Stop health monitoring
             agentManager.stopHealthMonitoring();
+            correlationEngine.stop();
 
             // Stop all agents
             logger.info('Stopping all agents...');
