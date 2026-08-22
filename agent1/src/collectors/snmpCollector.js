@@ -110,11 +110,21 @@ class SNMPCollector {
       metrics.cpu = await this.getSingleValue(session, routerOids.cpu, routerName);
       if (metrics.cpu !== null) prometheus.setCPU(router.name, router.ip, metrics.cpu);
 
-      // Memory
+      // Memory. CISCO-MEMORY-POOL-MIB exposes Used and Free, not Total, so
+      // the total is their sum. Reading a "total" OID directly was picking up
+      // ciscoMemoryPoolLargestFree and producing a wrong percentage.
       const used = await this.getSingleValue(session, routerOids.memory_used, routerName);
-      const total = await this.getSingleValue(session, routerOids.memory_total, routerName);
-      if (used && total) {
-        metrics.memory = ((used / total) * 100).toFixed(2);
+      const free = routerOids.memory_free
+        ? await this.getSingleValue(session, routerOids.memory_free, routerName)
+        : null;
+      const total = used !== null && free !== null
+        ? Number(used) + Number(free)
+        : await this.getSingleValue(session, routerOids.memory_total, routerName);
+
+      if (used !== null && total) {
+        metrics.memory = ((Number(used) / Number(total)) * 100).toFixed(2);
+        metrics.memoryUsedBytes = Number(used);
+        metrics.memoryTotalBytes = Number(total);
         prometheus.setMemory(router.name, router.ip, parseFloat(metrics.memory));
       }
 

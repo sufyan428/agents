@@ -69,7 +69,12 @@ class ConfigManager {
                 // unsupported OID must degrade quietly rather than crash.
                 cpu: '1.3.6.1.4.1.9.9.109.1.1.1.1.8.1',
                 memory_used: '1.3.6.1.4.1.9.9.48.1.1.1.5.1',
-                memory_total: '1.3.6.1.4.1.9.9.48.1.1.1.7.1',
+                // CISCO-MEMORY-POOL-MIB has no "total" object. Column 6 is
+                // Free and column 7 is LargestFree - the config previously
+                // used column 7 as the total, so the memory percentage was
+                // computed as used/largestFree and was wrong on real hardware.
+                // Total is used + free.
+                memory_free: '1.3.6.1.4.1.9.9.48.1.1.1.6.1',
                 // IF-MIB, standard across vendors. These were referenced by
                 // agent1's interface collector but never distributed, so it
                 // built the OID string "undefined.1" and sent garbage to the

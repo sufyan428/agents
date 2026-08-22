@@ -1,0 +1,21 @@
+{
+  "name": "@ragent/router-sim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simulated router: real SNMP responder, real syslog, and on-demand fault injection. Lets the framework be run and tested with no hardware.",
+  "license": "MIT",
+  "main": "src/index.js",
+  "bin": {
+    "router-sim": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "dependencies": {
+    "net-snmp": "^3.11.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
