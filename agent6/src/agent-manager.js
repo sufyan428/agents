@@ -321,6 +321,39 @@ class AgentManager {
         }
     }
 
+    /** Whether this agent name exists in the roster. */
+    has(agentName) {
+        return this.agents.has(agentName);
+    }
+
+    /**
+     * Turns an agent on or off at runtime.
+     *
+     * Disabling is not the same as stopping. A stopped agent is expected back
+     * and the supervisor will restart it if it exits badly; a disabled agent is
+     * deliberately absent, so health monitoring stops flagging it, auto-restart
+     * will not resurrect it, and peers can tell "switched off" apart from
+     * "broken" instead of treating both as an incident.
+     */
+    setEnabled(agentName, enabled) {
+        const agent = this.agents.get(agentName);
+        if (!agent) throw new Error(`Agent ${agentName} not found`);
+
+        const was = agent.enabled;
+        agent.enabled = Boolean(enabled);
+
+        if (!agent.enabled && agent.status !== 'stopped') {
+            logger.info(`Disabling ${agentName}: stopping it first`);
+            this.stopAgent(agentName);
+        }
+        if (agent.enabled && !was) {
+            agent.restartCount = 0;
+        }
+
+        logger.info(`Agent ${agentName} ${agent.enabled ? 'enabled' : 'disabled'}`);
+        return { name: agentName, enabled: agent.enabled, status: agent.status };
+    }
+
     /**
      * Signals the child's whole process group where the platform supports it.
      *
@@ -464,7 +497,10 @@ class AgentManager {
                 status: agent.status,
                 port: agent.port,
                 lastHealthCheck: agent.lastHealthCheck,
-                restartCount: agent.restartCount
+                restartCount: agent.restartCount,
+                // Lets a peer distinguish "switched off deliberately" from
+                // "should be running and is not".
+                expected: agent.enabled
             };
         }
 
@@ -485,7 +521,10 @@ class AgentManager {
             const health = await this.checkAllAgentsHealth();
 
             for (const [name, status] of Object.entries(health)) {
-                if (!status.healthy && this.agents.get(name).enabled) {
+                const agent = this.agents.get(name);
+                // A disabled agent being absent is the expected outcome, not a
+                // fault worth logging every cycle.
+                if (!status.healthy && agent && agent.enabled) {
                     logger.warn(`Agent ${name} is unhealthy: ${status.error || status.status}`);
                 }
             }

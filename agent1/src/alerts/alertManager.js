@@ -6,6 +6,7 @@
 const logger = require('../utils/logger');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const AlertDeduper = require('./alertDeduper');
 
 /**
  * Escapes text destined for an HTML email body.
@@ -28,6 +29,10 @@ class AlertManager {
   constructor() {
     this.alertHistory = [];
     this.emailTransporter = null;
+    this.deduper = new AlertDeduper({
+      cooldownMs: Number(process.env.ALERT_COOLDOWN_MS) || 15 * 60 * 1000,
+      resolveAfterMs: Number(process.env.ALERT_RESOLVE_AFTER_MS) || 5 * 60 * 1000,
+    });
     this.apiEndpoint = process.env.ALERT_API_ENDPOINT || null;
     this.enabledChannels = {
       console: true,
@@ -67,18 +72,33 @@ class AlertManager {
    * Send alert through all enabled channels
    */
   async sendAlert(alert) {
-    logger.warn(`ALERT [${alert.severity.toUpperCase()}]: ${alert.message}`);
+    // Suppression decides delivery, not recording: the history keeps every
+    // occurrence so /alerts still shows the true picture, while the channels
+    // only fire when there is something new to say.
+    const decision = this.deduper.consider(alert);
 
-    // Add to history
     this.alertHistory.push({
       ...alert,
-      sentAt: new Date().toISOString()
+      sentAt: new Date().toISOString(),
+      delivered: decision.deliver,
+      suppressionReason: decision.reason,
+      occurrence: decision.occurrence
     });
 
-    // Keep only last 1000 alerts in history
     if (this.alertHistory.length > 1000) {
       this.alertHistory.shift();
     }
+
+    if (!decision.deliver) {
+      logger.debug(
+        `Alert suppressed (${alert.router}/${alert.metric}, occurrence ${decision.occurrence}) - ` +
+        'condition unchanged since the last notification'
+      );
+      return;
+    }
+
+    const prefix = decision.reason === 'escalated' ? 'ESCALATED' : 'ALERT';
+    logger.warn(`${prefix} [${alert.severity.toUpperCase()}]: ${alert.message}`);
 
     // Send to enabled channels
     const promises = [];
@@ -245,6 +265,43 @@ Sent by Router Monitoring Agent
 </body>
 </html>
 `;
+  }
+
+  /**
+   * Emits a resolution notice for every condition that has stopped recurring.
+   *
+   * Called on a timer by the agent. Without it an operator sees an incident
+   * start and never learns it ended.
+   */
+  async sweepResolved() {
+    const resolved = this.deduper.collectResolved();
+    for (const item of resolved) {
+      const minutes = Math.round(item.durationMs / 60000);
+      const alert = {
+        metric: item.metric,
+        severity: 'info',
+        router: item.router,
+        value: 'resolved',
+        threshold: 'n/a',
+        timestamp: new Date().toISOString(),
+        message: `RESOLVED: ${item.metric} on ${item.router} recovered after ${minutes}m (${item.occurrences} occurrences)`,
+        details: `First seen ${item.firstSeen}, last seen ${item.lastSeen}`
+      };
+      logger.info(alert.message);
+      this.alertHistory.push({ ...alert, sentAt: new Date().toISOString(), delivered: true, suppressionReason: 'resolved' });
+
+      const promises = [];
+      if (this.enabledChannels.console) promises.push(this.sendConsoleAlert(alert));
+      if (this.enabledChannels.email) promises.push(this.sendEmailAlert(alert));
+      if (this.enabledChannels.api && this.apiEndpoint) promises.push(this.sendAPIAlert(alert));
+      await Promise.allSettled(promises);
+    }
+    return resolved.length;
+  }
+
+  /** Conditions currently being suppressed, for /status. */
+  getActiveConditions() {
+    return this.deduper.activeConditions();
   }
 
   /**

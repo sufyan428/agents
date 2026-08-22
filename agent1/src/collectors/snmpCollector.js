@@ -17,14 +17,26 @@ class SNMPCollector {
   /**
    * Convert OID string to integer array
    */
+  /**
+   * Converts a dotted OID to the integer array snmp-native expects.
+   *
+   * Returns null for anything that is not a well-formed OID. The previous
+   * version mapped parseInt over the parts without checking the result, so a
+   * missing config key produced the string "undefined.1", which became
+   * [NaN, 1] and was sent to the device as a real query every poll.
+   */
   oidStringToArray(oidString) {
     if (!oidString || typeof oidString !== 'string') return null;
-    try {
-      return oidString.split('.').map(part => parseInt(part, 10));
-    } catch (error) {
-      logger.error(`Failed to convert OID string: ${oidString}`);
+    if (!/^\d+(\.\d+)*$/.test(oidString)) {
+      logger.warn(`Ignoring malformed OID "${oidString}" - expected dotted digits`);
       return null;
     }
+    const parts = oidString.split('.').map((part) => Number.parseInt(part, 10));
+    if (parts.some((n) => !Number.isSafeInteger(n) || n < 0)) {
+      logger.warn(`Ignoring out-of-range OID "${oidString}"`);
+      return null;
+    }
+    return parts;
   }
 
   getVersion(versionString) {
@@ -129,13 +141,24 @@ class SNMPCollector {
       const ifDescOid = '1.3.6.1.2.1.2.2.1.2';
       const ifItems = await this.getSubtree(session, ifDescOid, router.name);
       
+      // Without these base OIDs there is nothing to ask for; querying anyway
+      // is what produced the "undefined.1" requests.
+      if (!routerOids.interface_in || !routerOids.interface_out) {
+        logger.warn(
+          `No interface_in/interface_out OIDs configured for ${router.name} - skipping interface stats`
+        );
+        return interfaces;
+      }
+
       for (const item of ifItems) {
         const index = item.index;
         const name = item.value;
 
         const inOctets = await this.getSingleValue(session, `${routerOids.interface_in}.${index}`, router.name);
         const outOctets = await this.getSingleValue(session, `${routerOids.interface_out}.${index}`, router.name);
-        const errors = await this.getSingleValue(session, `${routerOids.interface_errors}.${index}`, router.name);
+        const errors = routerOids.interface_errors
+          ? await this.getSingleValue(session, `${routerOids.interface_errors}.${index}`, router.name)
+          : null;
 
         interfaces.push({
           index: parseInt(index),

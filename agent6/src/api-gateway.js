@@ -133,6 +133,18 @@ class APIGateway {
             } catch (err) { next(err); }
         });
 
+        // Runtime toggles. Mutating, so the factory requires a token.
+        const toggle = (enabled) => (req, res, next) => {
+            if (!agentManager.has(req.params.name)) {
+                return res.status(404).json({ success: false, error: 'Agent not found' });
+            }
+            try {
+                res.json({ success: true, ...agentManager.setEnabled(req.params.name, enabled) });
+            } catch (err) { next(err); }
+        };
+        app.post('/api/agents/:name/enable', toggle(true));
+        app.post('/api/agents/:name/disable', toggle(false));
+
         app.post('/api/config/reload', (req, res, next) => {
             try {
                 configManager.loadMasterConfig();

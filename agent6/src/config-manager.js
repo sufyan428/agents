@@ -1,7 +1,9 @@
+const path = require('path');
+const { loadConfig, applyEnvMap } = require('@ragent/agent-common');
 const yaml = require('js-yaml');
 const fs = require('fs');
-const path = require('path');
 const logger = require('./utils/logger');
+const { MasterConfigSchema } = require('./schema');
 
 class ConfigManager {
     constructor() {
@@ -12,16 +14,30 @@ class ConfigManager {
     /**
      * Load master configuration from router.yml
      */
+    /**
+     * Loads and validates router.yml.
+     *
+     * Throws a ConfigError naming the offending key. Callers should let it
+     * reach the top: a framework that can stop agents and write to routers
+     * must not start on a config it could not fully understand.
+     */
     loadMasterConfig() {
-        try {
-            const fileContents = fs.readFileSync(this.configPath, 'utf8');
-            this.masterConfig = yaml.load(fileContents);
-            logger.info('Master configuration loaded successfully');
-            return this.masterConfig;
-        } catch (error) {
-            logger.error(`Failed to load master configuration: ${error.message}`);
-            throw error;
-        }
+        this.masterConfig = loadConfig({
+            file: this.configPath,
+            schema: MasterConfigSchema,
+            envOverrides: (raw, env) => {
+                applyEnvMap(raw, {
+                    BIND_HOST: 'orchestrator.bind_host',
+                    API_PORT: 'orchestrator.api_port',
+                    LOG_LEVEL: 'orchestrator.log_level',
+                    ROUTER_PRIMARY_HOST: 'router.primary.host',
+                    ROUTER_BACKUP_HOST: 'router.backup.host',
+                    SNMP_COMMUNITY: 'router.primary.snmp_community',
+                }, env);
+            }
+        });
+        logger.info('Master configuration loaded and validated');
+        return this.masterConfig;
     }
 
     /**
@@ -49,9 +65,18 @@ class ConfigManager {
             ],
             default_oids: {
                 uptime: '1.3.6.1.2.1.1.3.0',
+                // Cisco-specific. Wrong on other vendors, which is why an
+                // unsupported OID must degrade quietly rather than crash.
                 cpu: '1.3.6.1.4.1.9.9.109.1.1.1.1.8.1',
                 memory_used: '1.3.6.1.4.1.9.9.48.1.1.1.5.1',
-                memory_total: '1.3.6.1.4.1.9.9.48.1.1.1.7.1'
+                memory_total: '1.3.6.1.4.1.9.9.48.1.1.1.7.1',
+                // IF-MIB, standard across vendors. These were referenced by
+                // agent1's interface collector but never distributed, so it
+                // built the OID string "undefined.1" and sent garbage to the
+                // device on every poll.
+                interface_in: '1.3.6.1.2.1.2.2.1.10',
+                interface_out: '1.3.6.1.2.1.2.2.1.16',
+                interface_errors: '1.3.6.1.2.1.2.2.1.14'
             },
             syslog: {
                 enabled: true,
@@ -452,11 +477,39 @@ class ConfigManager {
                 return false;
             }
             fs.copyFileSync(filePath, `${filePath}.bak`);
-            logger.info(`Config changed, previous version saved to ${path.basename(filePath)}.bak`);
+            const changes = ConfigManager.summariseChange(current, yamlStr);
+            logger.info(
+                `Config changed: ${path.basename(filePath)} (${changes}). ` +
+                `Previous version saved alongside as .bak`
+            );
         }
 
         fs.writeFileSync(filePath, yamlStr, 'utf8');
         return true;
+    }
+
+    /**
+     * A one-line summary of which top-level keys a rewrite touches.
+     *
+     * Enough for an operator reading the log to see whether a restart changed
+     * anything they care about, without dumping two YAML documents into it.
+     * Secrets are never printed - only key names.
+     */
+    static summariseChange(oldYaml, newYaml) {
+        try {
+            const before = yaml.load(oldYaml) || {};
+            const after = yaml.load(newYaml) || {};
+            const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+            const touched = [];
+            for (const k of keys) {
+                const a = JSON.stringify(before[k]);
+                const b = JSON.stringify(after[k]);
+                if (a !== b) touched.push(k);
+            }
+            return touched.length ? `changed: ${touched.join(', ')}` : 'formatting only';
+        } catch {
+            return 'unparseable previous version';
+        }
     }
 
     /**

@@ -60,16 +60,34 @@ class Collector {
    * since the previous snapshot.
    */
   static hasAnomaly(snapshot, previousSnapshot) {
+    // Agents the orchestrator reports as disabled are absent on purpose. Before
+    // this, switching an agent off made every subsequent poll look anomalous,
+    // so the AI layer spent a model call every cycle - forever - reporting the
+    // same non-event.
+    const disabled = new Set(
+      Object.entries(snapshot.orchestrator?.agents || {})
+        .filter(([, a]) => a.enabled === false)
+        .map(([name]) => name)
+    );
+
     for (const [name, agent] of Object.entries(snapshot.agents)) {
+      if (disabled.has(name)) continue;
       if (!agent.reachable) return true;
       const status = agent.health?.status || agent.health?.healthy;
+      // 'degraded' is deliberately not an anomaly: it is the normal report
+      // from an agent whose monitored device is unreachable, which in a lab or
+      // a hardware outage is a steady state, not a new event.
       if (status === false || status === 'unhealthy') return true;
     }
 
     if (snapshot.orchestrator && previousSnapshot?.orchestrator) {
       for (const [name, current] of Object.entries(snapshot.orchestrator.agents || {})) {
         const previous = previousSnapshot.orchestrator.agents?.[name];
-        if (previous && (current.healthy !== previous.healthy || current.status !== previous.status)) {
+        if (!previous) continue;
+        // An operator toggling an agent is an intended change, not an incident.
+        if (current.enabled !== previous.enabled) continue;
+        if (current.enabled === false) continue;
+        if (current.healthy !== previous.healthy || current.status !== previous.status) {
           return true;
         }
       }

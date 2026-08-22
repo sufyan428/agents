@@ -68,6 +68,7 @@ class MonitoringAgent {
           syslog: syslogCollector.server ? 'active' : 'disabled'
         },
         alertStats: alertManager.getAlertStats(),
+        activeConditions: alertManager.getActiveConditions(),
         thresholds: thresholdProcessor.getThresholds()
       });
     });
@@ -142,9 +143,19 @@ class MonitoringAgent {
     });
 
     // Cleanup interval for old events
-    setInterval(() => {
+    this.cleanupInterval = setInterval(() => {
       syslogCollector.clearOldEvents();
     }, 60000); // Every minute
+
+    // Emit a resolution notice for conditions that have stopped recurring.
+    // Without this an operator sees an incident begin and never learns it
+    // ended, which is half a monitoring system.
+    const { alertManager } = require('./alerts');
+    this.resolveInterval = setInterval(() => {
+      alertManager.sweepResolved().catch((err) =>
+        logger.error(`Resolution sweep failed: ${err.message}`)
+      );
+    }, 60000);
 
     this.running = true;
     logger.info('Monitoring started');
@@ -222,6 +233,8 @@ class MonitoringAgent {
         clearInterval(intervalId);
         logger.info(`Stopped monitoring ${routerName}`);
       });
+      if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+      if (this.resolveInterval) clearInterval(this.resolveInterval);
 
       // Close collectors
       snmpCollector.close();

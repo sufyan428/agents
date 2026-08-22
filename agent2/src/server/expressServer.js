@@ -113,19 +113,24 @@ class ExpressServer {
     });
 
     // Reload configuration endpoint
+    // Removed rather than kept as a stub.
+    //
+    // This route used to return {success: true, message: 'Configuration reload
+    // triggered'} and do absolutely nothing. An endpoint that reports success
+    // for work it did not perform is worse than no endpoint: an operator
+    // watching a live incident would believe their config change had taken
+    // effect.
+    //
+    // Reloading this agent's config safely means rebuilding the SNMP and ICMP
+    // monitors, the syslog listener and the heartbeat cron without dropping an
+    // in-flight failover, which is real work and not yet done. Until it is,
+    // the honest interface is to say so.
     app.post('/config/reload', (req, res) => {
-      try {
-        // This would reload the configuration from file
-        res.json({
-          success: true,
-          message: 'Configuration reload triggered'
-        });
-      } catch (error) {
-        res.status(500).json({
-          error: 'Configuration reload failed',
-          message: error.message
-        });
-      }
+      res.status(501).json({
+        success: false,
+        error: 'Not implemented',
+        detail: 'Restart the agent to pick up configuration changes.'
+      });
     });
 
   }

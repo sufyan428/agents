@@ -3,7 +3,7 @@ server:
   metrics_path: /metrics
   health_path: /health
 governance:
-  auto_heal: true
+  auto_heal: false
   enforce_policies: true
   backup_before_changes: true
   approval_required: false
@@ -33,8 +33,6 @@ audit:
   include_details: true
 self_healing:
   enabled: true
-  # Nothing reaches a device unless the action is listed in
-  # allowed_actions AND dry_run is false. Both gates default closed.
   dry_run: true
   allowed_actions: []
   max_retries: 3
