@@ -1,4 +1,4 @@
-const { createServer } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 const Logger = require('../utils/logger');
 
 class ExpressServer {
@@ -236,7 +236,8 @@ class ExpressServer {
             status: hb.isActive ? 'healthy' : 'unhealthy',
             message: hb.isActive ? undefined : 'heartbeat loop is not running',
             simulated: false
-          }
+          },
+          simulationHealthCheck('agent2')
         ];
       }
     });

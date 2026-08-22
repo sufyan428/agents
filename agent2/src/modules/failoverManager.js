@@ -1,3 +1,27 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+// Declared at load so /health advertises them even before anything runs.
+declareSimulated(
+  'agent2.executeFailover',
+  'Reports a successful failover without changing any routing state.',
+  'VRRP priority change, BGP route manipulation, or a vendor API call'
+);
+declareSimulated(
+  'agent2.executeFailback',
+  'Reports a successful failback without changing any routing state.',
+  'restoring the VRRP priority or BGP routes changed during failover'
+);
+declareSimulated(
+  'agent2.verifyBackupAvailability',
+  'Always reports the backup as available.',
+  'an SNMP or ICMP check against the backup before switching to it'
+);
+declareSimulated(
+  'agent2.verifyPrimaryStability',
+  'Always reports the primary as stable.',
+  'a sustained health check over a window before failing back'
+);
+
 const fs = require('fs');
 const path = require('path');
 const Logger = require('../utils/logger');
@@ -214,46 +238,46 @@ class FailoverManager {
   }
 
   async verifyBackupAvailability() {
-    // This would typically check the backup router health
-    // For now, we'll assume it's available if we got here
-    this.logger.info('Verifying backup router availability');
+    markSimulated('agent2.verifyBackupAvailability', this.logger);
+    this.logger.info('Verifying backup router availability (simulated - always available)');
     return true;
   }
 
   async verifyPrimaryStability() {
-    // This would typically verify the primary router is stable
-    // For now, we'll assume it's stable if we got here
-    this.logger.info('Verifying primary router stability');
+    markSimulated('agent2.verifyPrimaryStability', this.logger);
+    this.logger.info('Verifying primary router stability (simulated - always stable)');
     return true;
   }
 
+  /**
+   * SIMULATED. Changes no routing state.
+   *
+   * A real implementation belongs here: VRRP priority changes, BGP route
+   * manipulation, or a vendor API call. Until then this reports what it did
+   * not do, and says so in the result, the logs, the metrics and /health.
+   */
   async executeFailover() {
-    // This is where you would implement actual failover logic
-    // Examples: BGP route changes, VRRP priority changes, etc.
-    
     this.logger.info('Executing failover logic');
-    
-    // Simulate failover execution
     await this.sleep(1000);
-    
+
     return {
+      ...markSimulated('agent2.executeFailover', this.logger),
       success: true,
-      message: 'Failover executed successfully'
+      applied: false,
+      message: 'Failover recorded, but no routing change was made (simulated)'
     };
   }
 
+  /** SIMULATED. See executeFailover. */
   async executeFailback() {
-    // This is where you would implement actual failback logic
-    // Examples: Restore BGP routes, reset VRRP priorities, etc.
-    
     this.logger.info('Executing failback logic');
-    
-    // Simulate failback execution
     await this.sleep(1000);
-    
+
     return {
+      ...markSimulated('agent2.executeFailback', this.logger),
       success: true,
-      message: 'Failback executed successfully'
+      applied: false,
+      message: 'Failback recorded, but no routing change was made (simulated)'
     };
   }
 

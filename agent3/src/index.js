@@ -13,7 +13,7 @@
  * @version 1.0.0
  */
 
-const { createServer } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 const winston = require('winston');
 const yaml = require('yaml');
 const fs = require('fs');
@@ -196,17 +196,17 @@ class SecurityIDAgent {
       metricsPath: this.config.prometheus.path || '/metrics',
       authToken: (process.env.AGENT_API_TOKEN || '').trim() || undefined,
       corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
-      healthChecks: () => Object.entries(this.modules).map(([name, mod]) => ({
-        name,
-        status: mod && typeof mod.isRunning === 'function'
-          ? (mod.isRunning() ? 'healthy' : 'degraded')
-          : 'healthy',
-        message: undefined,
-        // Config validation reads a generated placeholder config rather than
-        // the device, so anything it contributes is flagged until the real
-        // NETCONF/RESTCONF path lands.
-        simulated: name === 'configuration'
-      }))
+      healthChecks: () => [
+        ...Object.entries(this.modules).map(([name, mod]) => ({
+          name,
+          status: mod && typeof mod.isRunning === 'function'
+            ? (mod.isRunning() ? 'healthy' : 'degraded')
+            : 'healthy',
+          message: undefined,
+          simulated: false
+        })),
+        simulationHealthCheck('agent3')
+      ]
     });
 
     const app = this.agentServer.app;

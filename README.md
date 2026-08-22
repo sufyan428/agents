@@ -52,6 +52,61 @@ Change the model anytime by editing `OPENROUTER_MODEL` / `ANTHROPIC_MODEL` in th
 
 Each agent 1-5 also ships a `Dockerfile`, and `agent6/docker-compose.yml` brings up agents 1-5 plus Prometheus and Grafana as containers (isolated networking avoids the port conflicts that the bare-Node path has to work around - see below). This is a separate deployment path from `agent6 npm start`; agents 7-10 aren't in the compose file yet.
 
+## What is real and what is not
+
+This framework was built and tested without router hardware. Some capabilities
+measure a real device; some are implemented but unproven against one; and some
+return generated data so the surrounding system can be exercised.
+
+Nothing in the third column is hidden at runtime. Every simulated path logs a
+`SIMULATED:` warning the first time it runs, marks its result with
+`simulated: true`, and is listed by that agent's `/health` endpoint — which
+reports `degraded`, never `healthy`, while any simulated path is registered.
+Check it before you trust a number:
+
+```sh
+curl -s localhost:9093/health | jq '.simulated, .checks[] | select(.name=="simulated_paths")'
+```
+
+**Real** — measures an actual device or genuinely processes real input.
+**Partial** — implemented, but unverified against real hardware.
+**Simulated** — returns generated data. Not a measurement.
+
+| Agent | Capability | Status | Notes |
+|---|---|---|---|
+| 1 monitoring | SNMP polling (CPU, memory, uptime, interfaces) | Partial | Real SNMP client; needs a device with SNMP enabled |
+| 1 monitoring | Syslog ingestion and failed-login detection | Real | Genuinely parses received syslog |
+| 1 monitoring | Threshold alerting, dedupe, resolution | Real | |
+| 2 resilience | ICMP/SNMP heartbeat | Partial | Real probes; unverified against real failover hardware |
+| 2 resilience | **Failover execution** | **Simulated** | Records success; changes no routing state. Needs VRRP/BGP/vendor API |
+| 2 resilience | Backup availability / primary stability checks | Simulated | Always return "available" and "stable" |
+| 2 resilience | Config fetch and apply via NETCONF/RESTCONF | Simulated | Returns placeholders |
+| 3 security | Syslog auth-failure and port-scan detection | Real | Real parsing of real input |
+| 3 security | SNMP trap ingestion | Partial | |
+| 3 security | **Config validation** | **Simulated** | Validates a generated placeholder, not the device config |
+| 3 security | Traffic volume analysis | Simulated | Syslog carries no volume data. Needs NetFlow/sFlow/IPFIX |
+| 4 performance | ICMP latency / jitter / loss | Real | Falls back to generated values only when unreachable |
+| 4 performance | SNMP performance counters | Partial | Falls back to generated values when unreachable |
+| 4 performance | **QoS class metrics** | **Simulated** | No real collection path exists. Needs CISCO-CLASS-BASED-QOS-MIB |
+| 4 performance | Traffic distribution / balancing | Simulated | Needs interface counter deltas or flow data |
+| 4 performance | Applying an optimisation | Simulated | Reports applied; configures nothing |
+| 5 governance | SNMP-based policy checks | Partial | Real SNMP gets, compared against policy |
+| 5 governance | **Syslog and configuration policy checks** | **Simulated** | Return `compliant: true` without checking |
+| 5 governance | Config backup | Partial | |
+| 5 governance | Self-healing writes | Real, gated | Genuinely writes SNMP. Off by default, allowlisted, dry-run by default |
+| 5 governance | Firmware / CVE check | Simulated | Hardcoded version table, no advisory feed |
+| 6 orchestrator | Process supervision, health, config distribution | Real | |
+| 7–10 AI layer | Correlation, reporting, advice, chat | Real | Real model calls. Quality of input depends on the rows above |
+
+**The consequence worth stating plainly:** where an input is simulated, anything
+downstream inherits it. A compliance report from agent 8 that draws on agent 5's
+syslog policy checks is narrating a placeholder, and agent 9's remediation advice
+for a low agent-4 efficiency score is advice about generated numbers. The
+`simulated` flag propagates so you can tell, but the honest summary is that the
+AI layer is only as real as what it reads.
+
+Every simulated row is a well-scoped contribution. See CONTRIBUTING.md.
+
 ## Safety design
 
 - **Agent9 never executes anything.** Every suggestion/runbook/review it produces carries `requiresHumanApproval: true, autoApply: false` - there is no code path that applies a change automatically.
@@ -65,7 +120,7 @@ Each agent 1-5 also ships a `Dockerfile`, and `agent6/docker-compose.yml` brings
 
 ## Known environment quirks (by design, not bugs)
 
-- Agent2's `/health` reflects whether the *monitored router* is reachable, not whether the process is healthy - expect `healthy: false` with no real hardware present.
+- An agent whose monitored router is unreachable reports `degraded`, not `unhealthy` - the process is working correctly by telling you it cannot see the device. Only a broken process reports `unhealthy`, so a supervisor never restarts an agent over a device outage.
 - Free-tier LLM models vary in reliability. The shipped default (`nvidia/nemotron-3-nano-30b-a3b:free`) was picked by measurement, not preference: it returned valid structured output on every attempt at ~1.2s, while larger free models are more oversubscribed and return empty completions under load. Point the framework at any model you like via `OPENROUTER_MODEL` / `AI_MODEL` — agents 7-10 scale with whatever is behind them.
 
 ## License

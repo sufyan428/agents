@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent4.icmpFallback',
+  'Invents latency, jitter and packet loss when a real ping is unavailable.',
+  'a reachable ICMP target - note that ICMP needs no device credentials, so a real gateway works here'
+);
+
 const ping = require('ping');
 const winston = require('winston');
 
@@ -112,8 +120,15 @@ class IcmpTracker {
     }
   }
 
+  /**
+   * SIMULATED FALLBACK.
+   *
+   * Worth noting: ICMP is the one measurement in this framework that needs no
+   * device credentials at all. Pointing this at a real gateway produces real
+   * latency, jitter and loss, so this fallback should almost never be needed.
+   */
   getSimulatedPingResult(host) {
-    // Return simulated ping data for testing
+    markSimulated('agent4.icmpFallback', this.logger);
     const baseLatency = host === this.config.router.host ? 2 : 20;
     const variance = Math.random() * 10;
     const currentLatency = baseLatency + variance;
@@ -121,6 +136,8 @@ class IcmpTracker {
     const packetLoss = Math.random() > 0.95 ? Math.random() * 5 : 0;
 
     return {
+      simulated: true,
+      measured: false,
       avg: parseFloat(currentLatency.toFixed(2)),
       jitter: parseFloat(jitter.toFixed(2)),
       packetLoss: parseFloat(packetLoss.toFixed(2))

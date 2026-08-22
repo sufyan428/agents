@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent4.qosMetrics',
+  'ALL QoS class metrics are generated. There is no real collection path.',
+  'per-class counters via CISCO-CLASS-BASED-QOS-MIB, or the vendor equivalent'
+);
+
 const winston = require('winston');
 
 class QosMonitor {
@@ -43,9 +51,15 @@ class QosMonitor {
     return metrics;
   }
 
+  /**
+   * SIMULATED - entirely. Unlike the SNMP and ICMP fallbacks elsewhere in this
+   * agent, there is no real collection path here at all: every QoS number this
+   * framework reports is generated, on every run, whether or not a device is
+   * reachable. Real per-class statistics need CISCO-CLASS-BASED-QOS-MIB or the
+   * vendor equivalent.
+   */
   async collectClassMetrics(cls) {
-    // Simulate collecting QoS metrics for a priority class
-    // In real implementation, this would query SNMP or NETCONF for actual QoS statistics
+    markSimulated('agent4.qosMetrics', this.logger);
 
     const bandwidthUtilization = Math.random() * 100;
     const packetCount = Math.floor(Math.random() * 10000) + 1000;

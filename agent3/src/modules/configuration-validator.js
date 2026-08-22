@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent3.configFetch',
+  'Validates a generated placeholder configuration, not the device configuration.',
+  'a working NETCONF or RESTCONF session to the router'
+);
+
 /**
  * Configuration Validation Module
  * 
@@ -180,7 +188,8 @@ class ConfigurationValidator {
   async fetchViaNetconf() {
     // NETCONF implementation would go here
     // This is a placeholder for demonstration
-    this.logger.info('Fetching configuration via NETCONF (not implemented in demo)');
+    markSimulated('agent3.configFetch', this.logger);
+    this.logger.warn('Fetching configuration via NETCONF is not implemented - validating a placeholder');
     return this.generateSimulatedConfig();
   }
 
@@ -218,7 +227,8 @@ class ConfigurationValidator {
    * Fetch configuration via SNMP (basic version)
    */
   async fetchViaSnmp() {
-    this.logger.info('Fetching basic configuration via SNMP (simulated for demo)');
+    markSimulated('agent3.configFetch', this.logger);
+    this.logger.warn('Fetching configuration via SNMP is not implemented - validating a placeholder');
     return this.generateSimulatedConfig();
   }
 

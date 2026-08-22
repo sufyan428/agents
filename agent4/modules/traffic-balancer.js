@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent4.trafficDistribution',
+  'Generates per-link traffic volumes rather than reading interface counters.',
+  'interface counter deltas from SNMP, or flow data'
+);
+
 const winston = require('winston');
 
 class TrafficBalancer {
@@ -56,6 +64,7 @@ class TrafficBalancer {
     const interfaceCount = 3;
 
     for (let i = 1; i <= interfaceCount; i++) {
+      markSimulated('agent4.trafficDistribution', this.logger);
       const baseTraffic = Math.floor(Math.random() * 500000) + 300000;
       const variance = Math.floor(Math.random() * 200000);
 

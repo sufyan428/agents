@@ -8,6 +8,10 @@ import { z } from 'zod';
 import { createServer } from './server';
 import { createLogger, redact, redactText } from './logger';
 import { loadConfig, applyEnvMap, setPath, ConfigError, ServerConfigSchema } from './config';
+import {
+  declareSimulated, markSimulated, simulatedPaths, usedSimulatedPaths,
+  simulationHealthCheck, resetSimulationRegistry,
+} from './simulation';
 
 /* -------------------------------- logging -------------------------------- */
 
@@ -337,4 +341,55 @@ test('close() is idempotent and safe to call twice', async () => {
   await s.close();
   await s.close(); // must not throw or hang
   assert.ok(true);
+});
+
+/* ------------------------------ simulation ------------------------------- */
+
+test('a declared simulated path is visible before it is ever called', () => {
+  resetSimulationRegistry();
+  declareSimulated('agentX.doThing', 'pretends to do a thing.', 'a real device');
+  const paths = simulatedPaths();
+  assert.equal(paths.length, 1);
+  assert.equal(paths[0]?.invocations, 0);
+  // Health must already report it - an operator should not have to trigger a
+  // fake path to discover it exists.
+  assert.equal(simulationHealthCheck('agentX').status, 'degraded');
+  assert.equal(simulationHealthCheck('agentX').simulated, true);
+});
+
+test('markSimulated returns a marker the caller spreads into its result', () => {
+  resetSimulationRegistry();
+  declareSimulated('agentX.doThing', 'pretends.', 'NETCONF');
+  const result = { ...markSimulated('agentX.doThing'), success: true };
+  assert.equal(result.simulated, true);
+  assert.equal(result.simulatedPath, 'agentX.doThing');
+  assert.equal(result.simulatedReason, 'NETCONF');
+});
+
+test('it warns once, not on every invocation', () => {
+  resetSimulationRegistry();
+  declareSimulated('agentX.doThing', 'pretends.', 'NETCONF');
+  const warnings: string[] = [];
+  const log = { warn: (m: string) => warnings.push(m) };
+  for (let i = 0; i < 5; i++) markSimulated('agentX.doThing', log);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0] ?? '', /SIMULATED/);
+  assert.equal(simulatedPaths()[0]?.invocations, 5);
+});
+
+test('an agent with no simulated paths reports healthy', () => {
+  resetSimulationRegistry();
+  declareSimulated('agentX.thing', 'x', 'y');
+  const check = simulationHealthCheck('agentY');
+  assert.equal(check.status, 'healthy');
+  assert.equal(check.simulated, false);
+});
+
+test('usedSimulatedPaths only lists paths actually exercised', () => {
+  resetSimulationRegistry();
+  declareSimulated('a.one', 'x', 'y');
+  declareSimulated('a.two', 'x', 'y');
+  markSimulated('a.one');
+  assert.equal(usedSimulatedPaths().length, 1);
+  assert.equal(usedSimulatedPaths()[0]?.id, 'a.one');
 });

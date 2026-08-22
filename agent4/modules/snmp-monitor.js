@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent4.snmpFallback',
+  'Invents CPU, memory and interface counters when the device is unreachable.',
+  'a reachable SNMP agent - or removing the fallback so unreachable reports as unreachable'
+);
+
 const snmp = require('net-snmp');
 const winston = require('winston');
 
@@ -185,9 +193,21 @@ class SnmpMonitor {
     });
   }
 
+  /**
+   * SIMULATED FALLBACK. Invents metrics when the device cannot be reached.
+   *
+   * A monitoring agent that fabricates readings when it cannot see the device
+   * is worse than one that reports "unreachable" - the numbers flow into
+   * Prometheus, dashboards, the efficiency score, and eventually into AI-
+   * generated remediation advice, with nothing marking them as invented.
+   *
+   * Labelled here; removed in favour of an explicit unreachable state once the
+   * bundled router simulator provides a real SNMP target to develop against.
+   */
   getSimulatedMetrics(baseMetrics) {
-    // Return simulated metrics when no router is connected
-    this.logger.info('Using simulated metrics (no router connected)');
+    markSimulated('agent4.snmpFallback', this.logger);
+    baseMetrics.simulated = true;
+    baseMetrics.measured = false;
     
     baseMetrics.cpuUsage = Math.floor(Math.random() * 30) + 40; // 40-70%
     baseMetrics.memoryUsage = Math.floor(Math.random() * 25) + 55; // 55-80%

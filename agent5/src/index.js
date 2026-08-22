@@ -1,5 +1,5 @@
 const express = require('express'); // Router only; the server itself comes from the factory
-const { createServer } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 const path = require('path');
 const logger = require('./utils/logger');
 const ConfigLoader = require('./utils/configLoader');
@@ -416,7 +416,8 @@ class AutomationGovernanceAgent {
             status: 'degraded',
             message: 'syslog and configuration policy checks are not yet implemented against real devices',
             simulated: true
-          }
+          },
+          simulationHealthCheck('agent5')
         ];
       }
     });

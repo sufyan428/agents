@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent5.firmwareCheck',
+  'Compares against a hardcoded version table, not a vendor advisory feed.',
+  'a vendor PSIRT / NVD feed lookup'
+);
+
 const cron = require('node-cron');
 const logger = require('../utils/logger');
 
@@ -294,11 +302,19 @@ class TaskScheduler {
       const latestVersion = await this.getLatestFirmwareVersion(router.type);
       const updateAvailable = currentVersion !== latestVersion;
 
+      // securityPatches used to contain the literal strings 'CVE-2024-XXXX'
+      // and 'CVE-2024-YYYY'. Invented CVE identifiers in a security tool are
+      // worse than an empty list: they look actionable, they are searchable,
+      // and they lead an operator to conclude a device is vulnerable to
+      // something that does not exist. The list stays empty until there is a
+      // real advisory feed behind it.
       return {
+        ...markSimulated('agent5.firmwareCheck', logger),
         currentVersion,
         latestVersion,
         updateAvailable,
-        securityPatches: updateAvailable ? ['CVE-2024-XXXX', 'CVE-2024-YYYY'] : []
+        securityPatches: [],
+        securityPatchesNote: 'no advisory feed configured - this list is not populated'
       };
     } catch (error) {
       logger.error(`Failed to check firmware for ${router.name}: ${error.message}`);

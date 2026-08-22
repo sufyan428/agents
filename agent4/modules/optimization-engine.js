@@ -1,3 +1,11 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent4.applyOptimization',
+  'Reports an optimisation as applied without configuring anything.',
+  'a NETCONF/RESTCONF write, gated behind the same allowlist and dry-run as agent5 self-healing'
+);
+
 const winston = require('winston');
 
 class OptimizationEngine {
@@ -226,6 +234,7 @@ class OptimizationEngine {
     // Simulate the application of optimization
     // In real implementation, this would execute actual configuration changes
 
+    markSimulated('agent4.applyOptimization', this.logger);
     const delay = Math.random() * 1000 + 500;
     await new Promise(resolve => setTimeout(resolve, delay));
 

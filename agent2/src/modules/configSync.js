@@ -1,3 +1,10 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated('agent2.netconfFetch', 'Returns a placeholder string instead of the device config.', 'a NETCONF client session');
+declareSimulated('agent2.snmpConfigFetch', 'Returns a placeholder string instead of the device config.', 'an SNMP config-transfer MIB walk');
+declareSimulated('agent2.applyNetconf', 'Reports a config as applied without sending it.', 'a NETCONF edit-config transaction');
+declareSimulated('agent2.applyRestconf', 'Reports a config as applied without sending it.', 'a RESTCONF PATCH against the device');
+
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -157,8 +164,9 @@ class ConfigSync {
     
     return {
       method: 'netconf',
+      ...markSimulated('agent2.netconfFetch', this.logger),
       command,
-      result: 'NETCONF execution would go here',
+      result: null,
       timestamp: new Date().toISOString()
     };
   }
@@ -220,9 +228,10 @@ class ConfigSync {
     // For now, return a placeholder
     
     return {
+      ...markSimulated('agent2.snmpConfigFetch', this.logger),
       method: 'snmp',
       command,
-      result: 'SNMP config fetch would go here',
+      result: null,
       timestamp: new Date().toISOString()
     };
   }

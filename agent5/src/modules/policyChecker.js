@@ -1,3 +1,16 @@
+const { declareSimulated, markSimulated } = require('@ragent/agent-common');
+
+declareSimulated(
+  'agent5.checkSyslogPattern',
+  'Returns compliant without inspecting any syslog history.',
+  'a syslog history store to query'
+);
+declareSimulated(
+  'agent5.checkConfiguration',
+  'Returns compliant without reading the device configuration.',
+  'a NETCONF or RESTCONF read of the running config'
+);
+
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
@@ -132,21 +145,31 @@ class PolicyChecker {
     }
   }
 
+  /**
+   * SIMULATED. Inspects nothing and returns compliant.
+   *
+   * Returning `compliant: true` from a check that never ran is the most
+   * dangerous shape of fake data in this framework: it becomes a clean
+   * compliance report, which agent8 then narrates to an operator as fact.
+   * The result now carries the simulated marker so nothing downstream can
+   * mistake it for a verified pass.
+   */
   async checkSyslogPattern(router, policy) {
-    // This would check syslog messages for patterns
-    // For now, return compliant as placeholder
     return {
+      ...markSimulated('agent5.checkSyslogPattern', logger),
       compliant: true,
+      verified: false,
       currentValue: 'N/A',
       violation: null
     };
   }
 
+  /** SIMULATED. See checkSyslogPattern - returns compliant without reading the device. */
   async checkConfiguration(router, policy) {
-    // This would check configuration via NETCONF/RESTCONF
-    // For now, return compliant as placeholder
     return {
+      ...markSimulated('agent5.checkConfiguration', logger),
       compliant: true,
+      verified: false,
       currentValue: 'N/A',
       violation: null
     };

@@ -2,7 +2,7 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
 const winston = require('winston');
-const { createServer } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 const promClient = require('prom-client');
 
 // Import modules
@@ -258,6 +258,7 @@ const agentServer = createServer({
   authToken: (process.env.AGENT_API_TOKEN || '').trim() || undefined,
   corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
   healthChecks: () => [
+        simulationHealthCheck('agent4'),
     {
       name: 'optimization_engine',
       status: 'healthy',

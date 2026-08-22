@@ -3,7 +3,7 @@
  * Orchestrates collectors, processors, and alerts
  */
 
-const { createServer } = require('@ragent/agent-common');
+const { createServer, simulationHealthCheck } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const config = require('./utils/config');
 const prometheus = require('./utils/prometheus');
@@ -202,7 +202,8 @@ class MonitoringAgent {
               status: syslogCollector.server ? 'healthy' : 'degraded',
               message: syslogCollector.server ? undefined : 'syslog listener is not bound',
               simulated: false
-            }
+            },
+            simulationHealthCheck('agent1')
           ];
         }
       });
