@@ -1,6 +1,6 @@
 router:
-  host: 192.168.1.1
-  port: 161
+  host: 127.0.0.1
+  port: 1161
   snmp:
     community: public
     version: 2c

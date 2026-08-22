@@ -11,7 +11,23 @@ const prometheus = require('../utils/prometheus');
 class SNMPCollector {
   constructor() {
     this.sessions = new Map();
-    this.defaultOids = config.getDefaultOids();
+  }
+
+  /**
+   * Read on every use, never captured at construction.
+   *
+   * This module exports a singleton, so its constructor runs at require time -
+   * before config.load(). Capturing the OIDs there stored an empty object
+   * permanently, so every OID lookup was undefined and every metric read
+   * returned null. The agent logged "SNMP metrics collected successfully" on
+   * each poll and exported nothing, because a prom-client gauge that is never
+   * set simply does not appear.
+   *
+   * The interface walk still worked, which made it harder to spot: its base
+   * OID is written inline rather than read from config.
+   */
+  get defaultOids() {
+    return config.getDefaultOids();
   }
 
   /**

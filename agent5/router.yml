@@ -1,8 +1,8 @@
 routers:
   - name: Primary-Router
-    host: 192.168.1.1
+    host: 127.0.0.1
     snmp_community: public
     snmp_version: 2c
-    snmp_port: 161
+    snmp_port: 1161
     location: Main-Office
     type: cisco

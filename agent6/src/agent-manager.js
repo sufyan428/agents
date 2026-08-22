@@ -127,6 +127,7 @@ class AgentManager {
         for (const agentDef of agentDefinitions) {
             this.agents.set(agentDef.name, {
                 ...agentDef,
+                entryPoint: this.resolveEntryPoint(agentDef.path),
                 process: null,
                 status: 'stopped',
                 lastHealthCheck: null,
@@ -160,16 +161,21 @@ class AgentManager {
         try {
             logger.info(`Starting agent: ${agentName}`);
 
-            // shell:false. With a shell, kill() terminated the shell and left
-            // the real node process orphaned, still holding its port - which is
-            // why a stale-port cleanup hook had to exist. On Windows npm is a
-            // .cmd, so the command is resolved explicitly instead.
-            // detached:true puts the child in its own process group, so a stop
-            // can signal the whole tree rather than just the immediate child.
+            // Spawn node directly on the agent's entry point rather than going
+            // through `npm start`.
+            //
+            // Three reasons, and the first is a hard blocker: on Windows, npm
+            // is a .cmd, and Node refuses to spawn .cmd without a shell
+            // (CVE-2024-27980), so `spawn('npm.cmd', ..., {shell:false})` fails
+            // with EINVAL. Using a shell instead was the original bug - kill()
+            // terminated the shell and orphaned the real node process, still
+            // holding its port.
+            //
+            // Spawning node directly avoids the shell entirely, skips a wrapper
+            // process, and makes the child the actual agent - so a signal
+            // reaches the thing that needs to receive it.
             const isWindows = process.platform === 'win32';
-            const command = agent.startCommand === 'npm' && isWindows ? 'npm.cmd' : agent.startCommand;
-
-            const child = spawn(command, agent.startArgs, {
+            const child = spawn(process.execPath, [agent.entryPoint], {
                 cwd: agent.path,
                 stdio: ['ignore', 'pipe', 'pipe'],
                 detached: !isWindows,
@@ -319,6 +325,25 @@ class AgentManager {
             logger.error(`Failed to stop agent ${agentName}: ${error.message}`);
             throw error;
         }
+    }
+
+    /**
+     * The script to run for an agent, taken from its package.json "main".
+     *
+     * Read from the manifest rather than hardcoded, because the agents do not
+     * agree: most use src/index.js, agent1 uses src/main.js, agent4 uses a flat
+     * agent.js. Phase 7 unifies the layout; until then this stays correct
+     * without a lookup table to forget to update.
+     */
+    resolveEntryPoint(agentPath) {
+        const manifest = path.join(agentPath, 'package.json');
+        try {
+            const main = JSON.parse(fs.readFileSync(manifest, 'utf8')).main;
+            if (main) return path.join(agentPath, main);
+        } catch (error) {
+            logger.warn(`Could not read ${manifest}: ${error.message}`);
+        }
+        return path.join(agentPath, 'src', 'index.js');
     }
 
     /** Whether this agent name exists in the roster. */

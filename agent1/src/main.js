@@ -53,7 +53,17 @@ class MonitoringAgent {
    * Setup Express server for metrics and health
    */
   setupRoutes(app) {
-    // /health and /metrics are provided by the shared server factory.
+    // /health and /metrics come from the shared server factory, but the
+    // factory's registry only holds process metrics. Every router_* metric
+    // this agent produces lives on its own registry, which the conversion to
+    // the factory left unexposed - so the monitoring agent was serving no
+    // monitoring data at all.
+    app.get('/metrics/router', async (req, res, next) => {
+      try {
+        res.set('Content-Type', prometheus.register.contentType);
+        res.send(await prometheus.getMetrics());
+      } catch (error) { next(error); }
+    });
 
     // Status endpoint
     app.get('/status', (req, res) => {

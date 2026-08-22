@@ -115,52 +115,56 @@ class SnmpMonitor {
         this.logger.warn(`Resource metrics collection failed: ${error.message}`);
       }
 
-      // Get interface statistics
+      // Get interface statistics.
+      //
+      // This used to call session.walk(oid, cb) with a two-argument callback.
+      // net-snmp's walk signature is (oid, feedCb, doneCb): passing one
+      // callback left doneCb undefined, and on session close net-snmp calls
+      // req.doneCb(error) - an uncaught TypeError that killed the process.
+      //
+      // It never showed up because the agent had only ever been pointed at an
+      // address that timed out. Against any device that actually answers SNMP,
+      // agent4 crashed on its first poll.
+      //
+      // subtree() is used here rather than walk() because it is the same call
+      // agent1 makes, and its feed/done split is explicit.
       try {
-        await new Promise((resolve, reject) => {
-          session.walk(this.oids.interfaceName, (error, varbinds) => {
-            if (error) {
-              this.logger.warn(`Could not walk interfaces: ${error.message}`);
-              resolve();
-              return;
-            }
-
-            const interfacePromises = varbinds.map(async (varbind) => {
-              if (snmp.isVarbindError(varbind)) return null;
-
-              const interfaceIndex = varbind.oid.split('.').pop();
-              const interfaceName = varbind.value.toString();
-
-              try {
-                const [inOctets, outOctets, status] = await Promise.all([
-                  this.getInterfaceMetric(session, this.oids.interfaceInOctets, interfaceIndex),
-                  this.getInterfaceMetric(session, this.oids.interfaceOutOctets, interfaceIndex),
-                  this.getInterfaceMetric(session, this.oids.interfaceStatus, interfaceIndex)
-                ]);
-
-                return {
-                  index: interfaceIndex,
-                  name: interfaceName,
-                  inOctets: inOctets,
-                  outOctets: outOctets,
-                  status: status
-                };
-              } catch (error) {
-                this.logger.error(`Error getting interface ${interfaceName} metrics: ${error.message}`);
-                return null;
+        const rows = await new Promise((resolve, reject) => {
+          const collected = [];
+          session.subtree(
+            this.oids.interfaceName,
+            (varbinds) => {
+              for (const vb of varbinds) {
+                if (!snmp.isVarbindError(vb)) collected.push(vb);
               }
-            });
-
-            Promise.all(interfacePromises).then(interfaces => {
-              metrics.interfaces = interfaces.filter(i => i !== null);
-              resolve();
-            }).catch(reject);
-          });
+            },
+            (error) => (error ? reject(error) : resolve(collected)),
+          );
         });
+
+        const interfaces = await Promise.all(rows.map(async (varbind) => {
+          const interfaceIndex = String(varbind.oid).split('.').pop();
+          const interfaceName = varbind.value.toString();
+          try {
+            const [inOctets, outOctets, status] = await Promise.all([
+              this.getInterfaceMetric(session, this.oids.interfaceInOctets, interfaceIndex),
+              this.getInterfaceMetric(session, this.oids.interfaceOutOctets, interfaceIndex),
+              this.getInterfaceMetric(session, this.oids.interfaceStatus, interfaceIndex)
+            ]);
+            return { index: interfaceIndex, name: interfaceName, inOctets, outOctets, status };
+          } catch (error) {
+            this.logger.error(`Error getting interface ${interfaceName} metrics: ${error.message}`);
+            return null;
+          }
+        }));
+
+        metrics.interfaces = interfaces.filter((i) => i !== null);
       } catch (error) {
         this.logger.warn(`Interface statistics collection failed: ${error.message}`);
       }
 
+      // Closed only once every request above has settled. Closing with
+      // requests in flight is what surfaced the doneCb crash.
       session.close();
 
       this.logger.info(`SNMP metrics collected: CPU ${metrics.cpuUsage}%, Memory ${metrics.memoryUsage}%, ` +

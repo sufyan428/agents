@@ -5,16 +5,22 @@
 router:
   # PRIMARY ROUTER CONFIGURATION
   primary:
-    host: "192.168.1.1"              # CHANGE THIS to your primary router IP
+    # Defaults to the bundled simulator so the framework works out of the box
+    # with no hardware: run `npm run sim` in another terminal.
+    # Point this at a real device when you have one - nothing else changes.
+    host: "127.0.0.1"
     snmp_community: "public"          # CHANGE THIS to your SNMP community string
     snmp_version: "2c"
-    snmp_port: 161
+    snmp_port: 1161                   # 1161 = simulator. Real devices use 161.
     location: "Main-Office"
     type: "cisco"                     # cisco, juniper, mikrotik, etc.
   
   # BACKUP ROUTER (for Agent 2 - Resilience & Failover)
   backup:
-    host: "192.168.1.2"              # CHANGE THIS to your backup router IP
+    # Your real router works here with no admin access at all: agent2's
+    # heartbeat and agent4's latency tracking use ICMP, which needs no
+    # credentials. SNMP against it will simply fail and be reported as such.
+    host: "192.168.1.1"
     snmp_community: "public"          # CHANGE THIS to your SNMP community string
     snmp_version: "2c"
     snmp_port: 161
@@ -23,7 +29,9 @@ router:
 
 # Syslog Configuration (all agents will receive syslog from routers)
 syslog:
-  port: 514
+  # Unprivileged. Port 514 requires root on Linux and in the containers, where
+  # the agents deliberately run as a non-root user.
+  port: 5140
   protocol: "udp"
 
 # SNMP Trap Configuration
