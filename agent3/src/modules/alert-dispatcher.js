@@ -8,7 +8,8 @@
  */
 
 const axios = require('axios');
-const axiosRetry = require('axios-retry');
+// axios-retry v4 exposes the callable on .default; v3 exported it directly.
+const axiosRetry = require('axios-retry').default || require('axios-retry');
 
 // Configure axios retry
 axiosRetry(axios, {

@@ -193,7 +193,7 @@ class ExpressServer {
   }
 
   start() {
-    const port = this.config.server?.port || this.config.metrics?.port || 9091;
+    const port = Number(process.env.PORT) || this.config.server?.port || this.config.metrics?.port || 9091;
     const host = process.env.BIND_HOST || this.config.server?.host || '127.0.0.1';
     const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
 

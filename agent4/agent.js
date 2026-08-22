@@ -2,7 +2,7 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
 const winston = require('winston');
-const express = require('express');
+const { createServer } = require('@ragent/agent-common');
 const promClient = require('prom-client');
 
 // Import modules
@@ -14,7 +14,9 @@ const TrafficBalancer = require('./modules/traffic-balancer');
 const OptimizationEngine = require('./modules/optimization-engine');
 
 // Load configuration
-const config = yaml.load(fs.readFileSync('./router.yml', 'utf8'));
+// Resolved against this file, not the working directory. Launched from
+// anywhere else - which the orchestrator does - the relative path failed.
+const config = yaml.load(fs.readFileSync(path.join(__dirname, 'router.yml'), 'utf8'));
 
 // Initialize logger
 const logger = winston.createLogger({
@@ -245,29 +247,41 @@ async function monitorAndOptimize() {
   }
 }
 
-// Start Express server for metrics
-const app = express();
-app.get('/metrics', async (req, res) => {
+// HTTP server, via the shared factory: loopback binding, auth on mutating
+// routes, rate limits, and an error handler that does not leak internals.
+const bindHost = process.env.BIND_HOST || config.agent.bind_host || '127.0.0.1';
+const agentServer = createServer({
+  agent: 'agent4-performance',
+  logger,
+  port: Number(process.env.PORT) || config.agent.metrics_port,
+  host: bindHost,
+  authToken: (process.env.AGENT_API_TOKEN || '').trim() || undefined,
+  corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+  healthChecks: () => [
+    {
+      name: 'optimization_engine',
+      status: 'healthy',
+      message: `efficiency score ${currentMetrics.efficiencyScore}`,
+      simulated: false
+    }
+  ]
+});
+
+const app = agentServer.app;
+
+// The performance registry sits alongside the factory's process metrics.
+app.get('/metrics/performance', async (req, res, next) => {
   try {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
-  } catch (error) {
-    res.status(500).end(error.message);
-  }
+  } catch (error) { next(error); }
 });
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    efficiencyScore: currentMetrics.efficiencyScore,
-    uptime: process.uptime()
-  });
-});
-
-app.listen(config.agent.metrics_port, () => {
-  logger.info(`Performance Optimization Agent started`);
-  logger.info(`Metrics available at http://localhost:${config.agent.metrics_port}/metrics`);
-  logger.info(`Health check at http://localhost:${config.agent.metrics_port}/health`);
+agentServer.listen().then(() => {
+  logger.info('Performance Optimization Agent started');
+}).catch((error) => {
+  logger.error(`Failed to start HTTP server: ${error.message}`);
+  process.exit(1);
 });
 
 // Start modules

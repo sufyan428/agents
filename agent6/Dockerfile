@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY src/ ./src/
@@ -19,4 +19,10 @@ RUN mkdir -p logs
 EXPOSE 8080
 
 # Start orchestrator
+ENV BIND_HOST=0.0.0.0
+
+# Drop privileges. node:alpine ships an unprivileged "node" user.
+RUN mkdir -p /app/logs /app/data && chown -R node:node /app
+USER node
+
 CMD ["node", "src/index.js"]

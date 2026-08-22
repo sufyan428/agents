@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 require('dotenv').config();
 
-const express = require('express');
 const promClient = require('prom-client');
+const { createServer, expensiveLimiterFor, installShutdown } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const configLoader = require('./config/configLoader');
 const createLlmClient = require('./services/llmClientFactory');
@@ -12,11 +12,11 @@ const ReportScheduler = require('./services/reportScheduler');
 
 class AIReportingAgent {
   constructor() {
-    this.app = express();
+    this.app = null;
+    this.agentServer = null;
     this.config = null;
     this.reportGenerator = null;
     this.scheduler = null;
-    this.server = null;
   }
 
   async start() {
@@ -36,25 +36,36 @@ class AIReportingAgent {
     this.reportGenerator = new ReportGenerator(this.config, llmClient, dataCollector);
     this.scheduler = new ReportScheduler(this.config, this.reportGenerator);
 
-    this.setupMetrics();
-    this.setupRoutes();
-
     this.scheduler.start();
 
     const port = this.config.server.port;
-    return new Promise((resolve, reject) => {
-      this.server = this.app.listen(port, '0.0.0.0', () => {
-        logger.info(`AI Reporting Agent listening on port ${port}`);
-        logger.info(`Health check: http://localhost:${port}${this.config.server.health_path}`);
-        resolve();
-      });
-      this.server.on('error', reject);
+    const host = process.env.BIND_HOST || this.config.server.host || '127.0.0.1';
+    const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
+
+    this.agentServer = createServer({
+      agent: 'agent8-reporting',
+      logger,
+      port,
+      host,
+      authToken: token,
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      // The routes on this agent call a paid or rate-limited model endpoint.
+      // Without a tight cap, anyone who can reach the port can drain the
+      // operator's API quota or bill.
+      expensiveRateLimit: { windowMs: 60_000, max: 6 },
+      healthChecks: () => [
+        { name: 'ai_provider', status: 'healthy', message: undefined, simulated: false }
+      ]
     });
+
+    this.app = this.agentServer.app;
+    this.setupMetrics();
+    this.setupRoutes(this.app);
+    await this.agentServer.listen();
   }
 
   setupMetrics() {
-    this.register = new promClient.Registry();
-    promClient.collectDefaultMetrics({ register: this.register });
+    this.register = this.agentServer.registry;
 
     this.gauges = {
       reportsGenerated: new promClient.Gauge({
@@ -65,29 +76,15 @@ class AIReportingAgent {
     };
   }
 
-  setupRoutes() {
-    this.app.use(express.json());
+  setupRoutes(app) {
+    // Tighter bucket for routes that hit the model endpoint.
+    const expensive = expensiveLimiterFor(app);
 
-    this.app.get(this.config.server.health_path, (req, res) => {
-      res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        aiEnabled: true
-      });
-    });
-
-    this.app.get(this.config.server.metrics_path, async (req, res) => {
-      this.gauges.reportsGenerated.set(this.reportGenerator.getHistory().length);
-      res.set('Content-Type', this.register.contentType);
-      res.send(await this.register.metrics());
-    });
-
-    this.app.get('/api/reports', (req, res) => {
+    app.get('/api/reports', (req, res) => {
       res.json({ success: true, reports: this.reportGenerator.getHistory() });
     });
 
-    this.app.get('/api/reports/latest', (req, res) => {
+    app.get('/api/reports/latest', (req, res) => {
       const latest = this.reportGenerator.getLatest();
       if (!latest) {
         return res.status(404).json({ success: false, error: 'No reports generated yet' });
@@ -95,7 +92,7 @@ class AIReportingAgent {
       res.json({ success: true, report: latest });
     });
 
-    this.app.get('/api/reports/:id', (req, res) => {
+    app.get('/api/reports/:id', (req, res) => {
       const report = this.reportGenerator.getById(req.params.id);
       if (!report) {
         return res.status(404).json({ success: false, error: 'Report not found' });
@@ -103,7 +100,7 @@ class AIReportingAgent {
       res.json({ success: true, report });
     });
 
-    this.app.post('/api/reports/generate', async (req, res) => {
+    app.post('/api/reports/generate', expensive, async (req, res) => {
       try {
         const report = await this.reportGenerator.generate('on-demand');
         if (!report) {
@@ -121,35 +118,18 @@ class AIReportingAgent {
     if (this.scheduler) {
       this.scheduler.stop();
     }
-    if (this.server) {
-      this.server.close();
+    if (this.agentServer) {
+      return this.agentServer.close();
     }
+    return Promise.resolve();
   }
 }
 
 const agent = new AIReportingAgent();
 
-process.on('SIGTERM', () => {
-  logger.info('Received SIGTERM, shutting down');
-  agent.stop();
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('Received SIGINT, shutting down');
-  agent.stop();
-  process.exit(0);
-});
-
-process.on('uncaughtException', (error) => {
-  logger.error(`Uncaught exception: ${error.message}`);
-  logger.error(error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason) => {
-  logger.error(`Unhandled rejection: ${reason}`);
-  process.exit(1);
+installShutdown({
+  logger,
+  onShutdown: [() => agent.stop()]
 });
 
 agent.start().catch((error) => {

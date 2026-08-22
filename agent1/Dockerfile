@@ -1,6 +1,6 @@
 # Dockerfile for Router Monitoring Agent
 
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +17,7 @@ RUN apk add --no-cache \
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application code
 COPY src/ ./src/
@@ -39,6 +39,10 @@ USER monitoring
 # 2055: NetFlow (UDP)
 # 514: Syslog (UDP)
 EXPOSE 3000 2055/udp 514/udp
+
+# Inside the container this is the container network, not the host.
+# docker-compose publishes these ports to 127.0.0.1 only.
+ENV BIND_HOST=0.0.0.0
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

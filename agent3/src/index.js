@@ -13,7 +13,7 @@
  * @version 1.0.0
  */
 
-const express = require('express');
+const { createServer } = require('@ragent/agent-common');
 const winston = require('winston');
 const yaml = require('yaml');
 const fs = require('fs');
@@ -185,63 +185,60 @@ class SecurityIDAgent {
   }
 
   async startMetricsServer() {
-    return new Promise((resolve, reject) => {
-      const app = express();
-      
-      app.get(this.config.prometheus.path, async (req, res) => {
-        try {
-          res.set('Content-Type', this.metrics.register.contentType);
-          res.end(await this.metrics.register.metrics());
-        } catch (error) {
-          this.logger.error('Error generating metrics:', error);
-          res.status(500).end('Error generating metrics');
-        }
-      });
+    const port = Number(process.env.PORT) || this.config.prometheus.port;
+    const host = process.env.BIND_HOST || this.config.prometheus.host || '127.0.0.1';
 
-      // Health check endpoint
-      app.get('/health', (req, res) => {
-        const health = {
-          status: 'healthy',
-          uptime: process.uptime(),
-          timestamp: new Date().toISOString(),
-          modules: Object.keys(this.modules).filter(key => 
-            this.modules[key] && typeof this.modules[key].isRunning === 'function' 
-              ? this.modules[key].isRunning() 
-              : true
-          )
-        };
-        res.json(health);
-      });
+    this.agentServer = createServer({
+      agent: 'agent3-security',
+      logger: this.logger,
+      port,
+      host,
+      metricsPath: this.config.prometheus.path || '/metrics',
+      authToken: (process.env.AGENT_API_TOKEN || '').trim() || undefined,
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      healthChecks: () => Object.entries(this.modules).map(([name, mod]) => ({
+        name,
+        status: mod && typeof mod.isRunning === 'function'
+          ? (mod.isRunning() ? 'healthy' : 'degraded')
+          : 'healthy',
+        message: undefined,
+        // Config validation reads a generated placeholder config rather than
+        // the device, so anything it contributes is flagged until the real
+        // NETCONF/RESTCONF path lands.
+        simulated: name === 'configuration'
+      }))
+    });
 
-      // Agent info endpoint
-      app.get('/info', (req, res) => {
-        res.json({
-          name: this.config.agent.name,
-          instance: this.config.agent.instance,
-          version: require('../package.json').version,
-          environment: this.config.agent.environment,
-          router: this.config.router.host,
-          capabilities: [
-            'authentication-monitoring',
-            'traffic-analysis',
-            'configuration-validation',
-            'syslog-ingestion',
-            'snmp-trap-monitoring',
-            'icmp-monitoring'
-          ]
-        });
-      });
+    const app = this.agentServer.app;
 
-      this.server = app.listen(this.config.prometheus.port, '0.0.0.0', () => {
-        this.logger.info(`Metrics server listening on port ${this.config.prometheus.port}`);
-        resolve();
-      });
+    // The agent's own registry carries the security counters; the factory
+    // registry only has process metrics, so both are exposed.
+    app.get('/metrics/security', async (req, res, next) => {
+      try {
+        res.set('Content-Type', this.metrics.register.contentType);
+        res.end(await this.metrics.register.metrics());
+      } catch (error) { next(error); }
+    });
 
-      this.server.on('error', (error) => {
-        this.logger.error('Metrics server error:', error);
-        reject(error);
+    app.get('/info', (req, res) => {
+      res.json({
+        name: this.config.agent.name,
+        instance: this.config.agent.instance,
+        version: require('../package.json').version,
+        environment: this.config.agent.environment,
+        router: this.config.router.host,
+        capabilities: [
+          'authentication-monitoring',
+          'traffic-analysis',
+          'configuration-validation',
+          'syslog-ingestion',
+          'snmp-trap-monitoring',
+          'icmp-monitoring'
+        ]
       });
     });
+
+    await this.agentServer.listen();
   }
 
   async stop() {

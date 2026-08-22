@@ -1,4 +1,5 @@
-const express = require('express');
+const express = require('express'); // Router only; the server itself comes from the factory
+const { createServer } = require('@ragent/agent-common');
 const path = require('path');
 const logger = require('./utils/logger');
 const ConfigLoader = require('./utils/configLoader');
@@ -12,7 +13,8 @@ const TaskScheduler = require('./modules/taskScheduler');
 
 class AutomationGovernanceAgent {
   constructor() {
-    this.app = express();
+    this.app = null;
+    this.agentServer = null;
     this.configLoader = new ConfigLoader();
     this.config = null;
     this.routerConfig = null;
@@ -76,7 +78,6 @@ class AutomationGovernanceAgent {
       this.taskScheduler.scheduleTasks(this.routers);
 
       // Setup Express server
-      this.setupExpress();
 
       // Log initialization complete
       await this.auditReporter.logEvent({
@@ -99,33 +100,15 @@ class AutomationGovernanceAgent {
   }
 
   setupExpress() {
-    const serverConfig = this.configLoader.getServerConfig();
+    const app = this.app;
 
-    // Middleware
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
-
-    // Health check endpoint
-    this.app.get(serverConfig.health_path || '/health', (req, res) => {
-      res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        routers: this.routers.length,
-        version: '1.0.0'
-      });
-    });
-
-    // Metrics endpoint for Prometheus
-    this.app.get(serverConfig.metrics_path || '/metrics', async (req, res) => {
+    // /health and /metrics come from the shared factory. The governance
+    // registry is separate and exposed alongside it.
+    app.get('/metrics/governance', async (req, res, next) => {
       try {
-        const metrics = await this.metrics.getMetrics();
         res.set('Content-Type', 'text/plain');
-        res.send(metrics);
-      } catch (error) {
-        logger.error(`Failed to get metrics: ${error.message}`);
-        res.status(500).json({ error: 'Failed to get metrics' });
-      }
+        res.send(await this.metrics.getMetrics());
+      } catch (error) { next(error); }
     });
 
     // API endpoints
@@ -388,18 +371,60 @@ class AutomationGovernanceAgent {
 
   async start() {
     const serverConfig = this.configLoader.getServerConfig();
-    const port = serverConfig.port || 9091;
+    const port = Number(process.env.PORT) || serverConfig.port || 9091;
+    const host = process.env.BIND_HOST || serverConfig.host || '127.0.0.1';
+    const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
 
-    this.server = this.app.listen(port, '0.0.0.0', () => {
-      logger.info(`Automation & Governance Agent listening on port ${port}`);
-      logger.info(`Health check: http://localhost:${port}/health`);
-      logger.info(`Metrics: http://localhost:${port}/metrics`);
-      logger.info(`API: http://localhost:${port}/api`);
+    if (!token) {
+      logger.warn(
+        'AGENT_API_TOKEN is not set. Mutating /api routes will refuse with 503. ' +
+        'This agent can write configuration to network devices, so they do not ' +
+        'run unauthenticated.'
+      );
+    }
+
+    this.agentServer = createServer({
+      agent: 'agent5-automation',
+      logger,
+      port,
+      host,
+      healthPath: serverConfig.health_path || '/health',
+      metricsPath: serverConfig.metrics_path || '/metrics',
+      authToken: token,
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      healthChecks: () => {
+        const cfg = this.configLoader.getConfig?.() || {};
+        const heal = cfg.self_healing || {};
+        return [
+          {
+            name: 'routers_configured',
+            status: this.routers.length > 0 ? 'healthy' : 'degraded',
+            message: this.routers.length > 0 ? undefined : 'no routers configured',
+            simulated: false
+          },
+          {
+            name: 'self_healing',
+            status: 'healthy',
+            message: heal.dry_run === false ? 'ARMED - will write to devices' : 'dry run',
+            simulated: false
+          },
+          {
+            // Several policy checks return a placeholder verdict rather than
+            // reading the device. Surfaced here so a "compliant" result is
+            // never mistaken for a verified one.
+            name: 'policy_checks',
+            status: 'degraded',
+            message: 'syslog and configuration policy checks are not yet implemented against real devices',
+            simulated: true
+          }
+        ];
+      }
     });
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => this.shutdown());
-    process.on('SIGINT', () => this.shutdown());
+    this.app = this.agentServer.app;
+    this.setupExpress();
+    await this.agentServer.listen();
+    logger.info(`API: http://${host}:${port}/api`);
   }
 
   async shutdown() {

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 require('dotenv').config();
 
-const express = require('express');
 const promClient = require('prom-client');
+const { createServer, expensiveLimiterFor, installShutdown } = require('@ragent/agent-common');
 const logger = require('./utils/logger');
 const configLoader = require('./config/configLoader');
 const createLlmClient = require('./services/llmClientFactory');
@@ -10,10 +10,10 @@ const CorrelationEngine = require('./services/correlationEngine');
 
 class AICorrelationAgent {
   constructor() {
-    this.app = express();
+    this.app = null;
+    this.agentServer = null;
     this.config = null;
     this.correlationEngine = null;
-    this.server = null;
   }
 
   async start() {
@@ -31,25 +31,36 @@ class AICorrelationAgent {
     const llmClient = createLlmClient(this.config);
     this.correlationEngine = new CorrelationEngine(this.config, llmClient);
 
-    this.setupMetrics();
-    this.setupRoutes();
-
     this.correlationEngine.start();
 
     const port = this.config.server.port;
-    return new Promise((resolve, reject) => {
-      this.server = this.app.listen(port, '0.0.0.0', () => {
-        logger.info(`AI Correlation Agent listening on port ${port}`);
-        logger.info(`Health check: http://localhost:${port}${this.config.server.health_path}`);
-        resolve();
-      });
-      this.server.on('error', reject);
+    const host = process.env.BIND_HOST || this.config.server.host || '127.0.0.1';
+    const token = (process.env.AGENT_API_TOKEN || '').trim() || undefined;
+
+    this.agentServer = createServer({
+      agent: 'agent7-correlation',
+      logger,
+      port,
+      host,
+      authToken: token,
+      corsOrigins: (process.env.AGENT_CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+      // The routes on this agent call a paid or rate-limited model endpoint.
+      // Without a tight cap, anyone who can reach the port can drain the
+      // operator's API quota or bill.
+      expensiveRateLimit: { windowMs: 60_000, max: 6 },
+      healthChecks: () => [
+        { name: 'ai_provider', status: 'healthy', message: undefined, simulated: false }
+      ]
     });
+
+    this.app = this.agentServer.app;
+    this.setupMetrics();
+    this.setupRoutes(this.app);
+    await this.agentServer.listen();
   }
 
   setupMetrics() {
-    this.register = new promClient.Registry();
-    promClient.collectDefaultMetrics({ register: this.register });
+    this.register = this.agentServer.registry;
 
     this.gauges = {
       pollsTotal: new promClient.Gauge({
@@ -70,36 +81,18 @@ class AICorrelationAgent {
     };
   }
 
-  setupRoutes() {
-    this.app.use(express.json());
+  setupRoutes(app) {
+    // Tighter bucket for routes that hit the model endpoint.
+    const expensive = expensiveLimiterFor(app);
 
-    this.app.get(this.config.server.health_path, (req, res) => {
-      res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        aiEnabled: true
-      });
-    });
-
-    this.app.get(this.config.server.metrics_path, async (req, res) => {
-      const metrics = this.correlationEngine.getMetrics();
-      this.gauges.pollsTotal.set(metrics.pollsTotal);
-      this.gauges.llmCallsTotal.set(metrics.llmCallsTotal);
-      this.gauges.llmErrorsTotal.set(metrics.llmErrorsTotal);
-
-      res.set('Content-Type', this.register.contentType);
-      res.send(await this.register.metrics());
-    });
-
-    this.app.get('/api/snapshot', (req, res) => {
+    app.get('/api/snapshot', (req, res) => {
       res.json({
         success: true,
         snapshot: this.correlationEngine.getLatestSnapshot()
       });
     });
 
-    this.app.get('/api/incidents', (req, res) => {
+    app.get('/api/incidents', (req, res) => {
       res.json({
         success: true,
         latest: this.correlationEngine.getLatestResult(),
@@ -107,7 +100,7 @@ class AICorrelationAgent {
       });
     });
 
-    this.app.post('/api/ask', async (req, res) => {
+    app.post('/api/ask', expensive, async (req, res) => {
       const { question } = req.body;
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ success: false, error: '"question" (string) is required' });
@@ -130,35 +123,18 @@ class AICorrelationAgent {
     if (this.correlationEngine) {
       this.correlationEngine.stop();
     }
-    if (this.server) {
-      this.server.close();
+    if (this.agentServer) {
+      return this.agentServer.close();
     }
+    return Promise.resolve();
   }
 }
 
 const agent = new AICorrelationAgent();
 
-process.on('SIGTERM', () => {
-  logger.info('Received SIGTERM, shutting down');
-  agent.stop();
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('Received SIGINT, shutting down');
-  agent.stop();
-  process.exit(0);
-});
-
-process.on('uncaughtException', (error) => {
-  logger.error(`Uncaught exception: ${error.message}`);
-  logger.error(error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason) => {
-  logger.error(`Unhandled rejection: ${reason}`);
-  process.exit(1);
+installShutdown({
+  logger,
+  onShutdown: [() => agent.stop()]
 });
 
 agent.start().catch((error) => {

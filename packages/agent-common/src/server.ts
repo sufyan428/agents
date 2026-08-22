@@ -105,8 +105,6 @@ export function createServer(opts: ServerOptions): AgentServer {
     }),
   );
 
-  app.use(express.json({ limit: bodyLimit }));
-
   // Correlation id: honour an inbound one so a trace survives across agents.
   app.use((req: Request, res: Response, next: NextFunction) => {
     const inbound = req.get('x-correlation-id');
@@ -159,6 +157,11 @@ export function createServer(opts: ServerOptions): AgentServer {
     }
     next();
   });
+
+  // Body parsing happens AFTER authentication deliberately. An unauthenticated
+  // caller should not be able to make this process parse arbitrary JSON - that
+  // is work, and memory, spent on someone who has not proven anything yet.
+  app.use(express.json({ limit: bodyLimit }));
 
   // ---- health & metrics -------------------------------------------------
   app.get(healthPath, async (_req: Request, res: Response) => {
