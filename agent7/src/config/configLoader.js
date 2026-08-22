@@ -1,48 +1,53 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { resolveAiConfig } = require('@ragent/ai-core');
 
+/**
+ * Loads agent7's config and resolves its AI settings.
+ *
+ * The AI half is delegated to @ragent/ai-core so all four AI agents resolve
+ * providers, models, keys and budgets identically. Previously each agent
+ * carried its own copy of that logic, and they had already drifted.
+ *
+ * Returns config.ai as null when no key is configured. That is not an error:
+ * the AI layer is optional by design, and the agent reports it clearly rather
+ * than failing in a way that looks like a fault.
+ */
 class ConfigLoader {
-  load(configPath = path.join(__dirname, '..', '..', 'config.yml')) {
-    const fileContents = fs.readFileSync(configPath, 'utf8');
-    const config = yaml.load(fileContents);
+  load(configPath = path.join(__dirname, '..', '..', 'config.yml'), env = process.env) {
+    const config = yaml.load(fs.readFileSync(configPath, 'utf8'));
 
-    if (process.env.PORT) {
-      config.server.port = parseInt(process.env.PORT, 10);
-    }
-    if (process.env.ANTHROPIC_MODEL) {
-      config.ai.anthropic.model = process.env.ANTHROPIC_MODEL;
-    }
-    if (process.env.OPENROUTER_MODEL) {
-      config.ai.openrouter.model = process.env.OPENROUTER_MODEL;
-    }
+    if (env.PORT) config.server.port = parseInt(env.PORT, 10);
+    if (env.BIND_HOST) config.server.host = env.BIND_HOST;
 
-    const provider = this.resolveProvider(config.ai.provider);
-    config.ai.provider = provider;
+    const fileAi = config.ai || {};
 
-    if (provider === 'anthropic') {
-      config.ai.apiKey = process.env.ANTHROPIC_API_KEY;
-      config.ai.model = config.ai.anthropic.model;
-      config.ai.effort = config.ai.anthropic.effort;
-    } else if (provider === 'openrouter') {
-      config.ai.apiKey = process.env.OPENROUTER_API_KEY;
-      config.ai.model = config.ai.openrouter.model;
-    } else {
-      config.ai.apiKey = null;
-      config.ai.model = null;
-    }
+    // Precedence is environment over config file. resolveAiConfig treats what
+    // it is handed as an explicit override that beats the environment - correct
+    // for programmatic use, wrong for a file value the operator expects to
+    // override with an env var. So a file value is withheld when the matching
+    // env var is set, letting the environment through.
+    //
+    // Without this, AI_DAILY_CALL_BUDGET=0 was silently ignored because
+    // config.yml also specified a budget.
+    const fromFile = (envKey, value) => {
+      const fromEnv = env[envKey];
+      return fromEnv !== undefined && fromEnv !== '' ? undefined : value;
+    };
+
+    config.ai = resolveAiConfig({
+      provider: fromFile('AI_PROVIDER', fileAi.provider),
+      baseUrl: fromFile('AI_BASE_URL', fileAi.base_url),
+      model: fromFile('AI_MODEL', fileAi.model),
+      maxTokens: fromFile('AI_MAX_TOKENS', fileAi.max_tokens),
+      requestTimeoutMs: fileAi.request_timeout_ms,
+      dailyCallBudget: fromFile('AI_DAILY_CALL_BUDGET', fileAi.daily_call_budget),
+      dailyTokenBudget: fromFile('AI_DAILY_TOKEN_BUDGET', fileAi.daily_token_budget),
+      appName: 'agent7',
+    }, env);
 
     return config;
-  }
-
-  resolveProvider(configured) {
-    if (configured === 'anthropic' || configured === 'openrouter') {
-      return configured;
-    }
-    // auto: prefer OpenRouter (free-by-default) if its key is set, else Anthropic
-    if (process.env.OPENROUTER_API_KEY) return 'openrouter';
-    if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-    return null;
   }
 }
 

@@ -58,7 +58,7 @@ class RemediationAdvisor {
     }
 
     const userContent = JSON.stringify(issues, null, 2);
-    const result = await this.llmClient.analyze(SUGGEST_SYSTEM_PROMPT, userContent);
+    const result = await this.llmClient.complete(SUGGEST_SYSTEM_PROMPT, userContent);
 
     if (!result || !result.text) {
       logger.error('Remediation suggestion generation returned no content');
@@ -82,7 +82,7 @@ class RemediationAdvisor {
       return null;
     }
 
-    const result = await this.llmClient.analyze(RUNBOOK_SYSTEM_PROMPT, description);
+    const result = await this.llmClient.complete(RUNBOOK_SYSTEM_PROMPT, description);
     if (!result || !result.text) {
       logger.error('Runbook generation returned no content');
       return null;
@@ -93,7 +93,7 @@ class RemediationAdvisor {
 
   async reviewConfigChange(proposedChange) {
     const userContent = typeof proposedChange === 'string' ? proposedChange : JSON.stringify(proposedChange, null, 2);
-    const result = await this.llmClient.analyze(REVIEW_SYSTEM_PROMPT, userContent);
+    const result = await this.llmClient.complete(REVIEW_SYSTEM_PROMPT, userContent);
 
     if (!result || !result.text) {
       logger.error('Config change review returned no content');

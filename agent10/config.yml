@@ -34,18 +34,33 @@ known_agents:
   - agent10-chatops
 
 ai:
-  provider: "auto"
-  anthropic:
-    model: "claude-opus-4-8"
-    effort: "medium"
-  openrouter:
-    # Chosen for reliability, not raw size - the biggest free models on
-    # OpenRouter are the most oversubscribed. Swap via OPENROUTER_MODEL
-    # (or here) to any "provider/model:free" id from https://openrouter.ai/models.
-    model: "nvidia/nemotron-3-nano-30b-a3b:free"
-  max_tokens: 2048
+  # Provider-agnostic. "openai-compatible" reaches OpenRouter, Gemini's
+  # compatibility endpoint, Together, Groq, Ollama, vLLM, LM Studio and
+  # anything else speaking /chat/completions. Use "anthropic" for the native
+  # Anthropic API.
+  provider: "openai-compatible"
+  base_url: "https://openrouter.ai/api/v1"
+
+  # Any model name the endpoint accepts. The framework holds no opinion and
+  # maintains no allowlist - one would be wrong within a month.
+  #
+  # The default is free and was chosen by measurement rather than preference:
+  # 3/3 valid structured responses at ~1.2s, parsing cleanly with no repair
+  # pass. Larger free models are more oversubscribed and return empty
+  # completions under load, which is bad for an agent polling unattended.
+  #
+  # Agents 7-10 scale with whatever is behind them. A free model works; a
+  # frontier model works better. That is your call and your bill.
+  model: "nvidia/nemotron-3-nano-30b-a3b:free"
+
+  max_tokens: 4096
   request_timeout_ms: 45000
 
+  # Spend controls, enforced locally over a rolling 24h window. Set the call
+  # budget to 0 to disable this agent's model use entirely without touching
+  # any other configuration.
+  daily_call_budget: 500
+  daily_token_budget: 0
 notifications:
   poll_interval_seconds: 120
   history_size: 30

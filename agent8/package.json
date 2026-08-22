@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test"
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "keywords": [
     "router",
@@ -18,10 +18,10 @@
   "author": "sufiyansrepos",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.112.0",
     "@ragent/agent-common": "0.1.0",
     "@ragent/agent-protocol": "0.1.0",
     "@ragent/ai-core": "0.1.0",
+    "@ragent/analytics": "0.1.0",
     "axios": "^1.8.4",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

@@ -60,7 +60,7 @@ class ChatEngine {
    * - { reply, requiresConfirmation: true, pendingAction } for destructive actions (NOT executed - caller must round-trip to /confirm)
    */
   async processMessage(message) {
-    const llmResult = await this.llmClient.analyze(this.systemPrompt, message);
+    const llmResult = await this.llmClient.complete(this.systemPrompt, message);
 
     if (!llmResult || !llmResult.text) {
       return { reply: "Sorry, I couldn't process that right now - try again in a moment.", requiresConfirmation: false, result: null };

@@ -32,7 +32,7 @@ class ReportGenerator {
     const userContent = JSON.stringify(data, null, 2);
 
     logger.info(`Generating ${label} report`);
-    const result = await this.llmClient.analyze(SYSTEM_PROMPT, userContent);
+    const result = await this.llmClient.complete(SYSTEM_PROMPT, userContent);
 
     if (!result || !result.text) {
       logger.error(`Report generation returned no content (${label})`);

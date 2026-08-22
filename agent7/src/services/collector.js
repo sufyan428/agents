@@ -55,6 +55,26 @@ class Collector {
   }
 
   /**
+   * Fetches the incidents agent6 has already correlated.
+   *
+   * The orchestrator does the grouping and root-cause ranking deterministically
+   * and serves it with no API key required; this agent narrates the result.
+   * Returning null on failure rather than throwing keeps the distinction clear:
+   * no incidents is a valid state, and so is not being able to ask.
+   */
+  async fetchIncidents() {
+    try {
+      const res = await axios.get(`${this.config.orchestrator.base_url}/api/incidents`, {
+        timeout: this.config.orchestrator.timeout_ms,
+      });
+      return Array.isArray(res.data?.incidents) ? res.data.incidents : [];
+    } catch (error) {
+      logger.warn(`Could not fetch correlated incidents from the orchestrator: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Cheap heuristic gate for whether this snapshot is worth an LLM call:
    * any agent unreachable/unhealthy, or an orchestrator-reported status flip
    * since the previous snapshot.

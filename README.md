@@ -37,16 +37,73 @@ The orchestrator's API gateway comes up on **http://localhost:8080** — see `/a
 
 ### Enabling the AI layer (agents 7-10)
 
-One file, one key, applies to all four agents:
+Agents 1-6 never make an AI call. The AI layer is optional, and the framework
+detects, correlates and ranks incidents without it — `GET /api/incidents` on the
+orchestrator works with no key configured at all. Agents 7-10 add narration,
+digests, remediation advice and a chat interface on top of that.
+
+Three values, in `agent6/.env`:
 
 ```sh
-cp agent6/.env.example agent6/.env
-# edit agent6/.env, paste ONE key:
-#   OPENROUTER_API_KEY=...   (free by default - nvidia/nemotron-3-nano-30b-a3b:free)
-#   or ANTHROPIC_API_KEY=... (claude-opus-4-8)
+AI_API_KEY=...                                    # your key
+AI_MODEL=nvidia/nemotron-3-nano-30b-a3b:free      # any model the endpoint accepts
+AI_BASE_URL=https://openrouter.ai/api/v1          # any OpenAI-compatible endpoint
 ```
 
-Change the model anytime by editing `OPENROUTER_MODEL` / `ANTHROPIC_MODEL` in that same file - no code changes, no restarts of anything but the AI agents themselves. Each of agents 7-10 also accepts its own standalone `.env` (see each agent's `.env.example`) if you want to run one without the orchestrator - but the shared `agent6/.env` is the intended path for normal use.
+**The framework holds no opinion about which model you use** and maintains no
+allowlist — one would be wrong within a month. The shipped default is free.
+
+| Where | `AI_BASE_URL` | Notes |
+|---|---|---|
+| OpenRouter | `https://openrouter.ai/api/v1` | Default. Free models available |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | OpenAI-compatible endpoint |
+| Together / Groq / Fireworks | their `/v1` | Any OpenAI-compatible host |
+| Ollama (local) | `http://localhost:11434/v1` | No key needed; pass any string |
+| vLLM / LM Studio | your `/v1` | Self-hosted |
+| Anthropic | *(omit)* | Set `AI_PROVIDER=anthropic` instead |
+
+Agents 7-10 scale with whatever is behind them. A free model works; a frontier
+model works better. That is your call and your bill.
+
+#### Spend control
+
+Every AI agent enforces a local budget over a rolling 24 hours, before any
+request leaves the process:
+
+```sh
+AI_DAILY_CALL_BUDGET=500     # 0 disables this agent's model use entirely
+AI_DAILY_TOKEN_BUDGET=0      # 0 means no token limit
+```
+
+A circuit breaker opens after repeated failures, and an authentication failure
+stops the layer outright rather than retrying a key that will not start working.
+Unchanged incidents are not re-narrated — the same prose about the same ongoing
+problem is not worth a model call.
+
+#### Built for unreliable models
+
+Free endpoints return empty completions under load, lack JSON mode, and often
+have no tool calling. Rather than requiring features they may not have, the
+client asks for JSON in the prompt and parses defensively: fence stripping,
+balanced-brace extraction, trailing-comma repair, schema validation, then one
+repair round-trip, then a deterministic fallback.
+
+**No AI failure can take down a deterministic agent.** Agents 7-10 report
+`degraded`, never `unhealthy`, so a supervisor never restarts one over a model
+outage. Check what it is actually doing:
+
+```sh
+curl -s localhost:9096/health | jq '.checks[] | select(.name=="ai_provider")'
+```
+
+Four failure modes, each with a message you can act on:
+
+| Situation | Reported |
+|---|---|
+| Working | `healthy` |
+| Wrong model name | `degraded` — `provider unusable: ... is not a valid model ID` |
+| Bad key | `degraded` — `provider unusable: auth: Authentication failed (401)` |
+| `AI_DAILY_CALL_BUDGET=0` | `degraded` — `AI disabled: daily call budget is 0` |
 
 ### Docker
 
