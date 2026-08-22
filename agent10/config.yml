@@ -1,0 +1,55 @@
+# AI ChatOps Agent - non-secret settings.
+# The AI provider key is BYOK - paste it once into agent6/.env (shared across
+# all AI agents) or, for standalone runs, into this agent's own .env.
+# Slack/Discord webhook URLs (optional, separate from the AI key) also go in
+# .env - see .env.example. Neither is required: without them, this agent still
+# works fully over its own /api/chat endpoint, and proactive findings are just
+# recorded locally (GET /api/notifications) instead of pushed anywhere.
+
+server:
+  port: 9099
+  health_path: /health
+  metrics_path: /metrics
+
+orchestrator:
+  base_url: "http://localhost:8080"
+  timeout_ms: 10000
+
+sources:
+  agent7_url: "http://localhost:9096"
+  agent8_url: "http://localhost:9097"
+  agent9_url: "http://localhost:9098"
+  timeout_ms: 10000
+
+# Every agent name the chat interface is allowed to reference/act on.
+known_agents:
+  - agent1-monitoring
+  - agent2-resilience
+  - agent3-security
+  - agent4-performance
+  - agent5-automation
+  - agent7-correlation
+  - agent8-reporting
+  - agent9-remediation
+  - agent10-chatops
+
+ai:
+  provider: "auto"
+  anthropic:
+    model: "claude-opus-4-8"
+    effort: "medium"
+  openrouter:
+    # Chosen for reliability, not raw size - the biggest free models on
+    # OpenRouter are the most oversubscribed. Swap via OPENROUTER_MODEL
+    # (or here) to any "provider/model:free" id from https://openrouter.ai/models.
+    model: "openai/gpt-oss-20b:free"
+  max_tokens: 2048
+  request_timeout_ms: 45000
+
+notifications:
+  poll_interval_seconds: 120
+  history_size: 30
+
+logging:
+  level: "info"
+  directory: "./logs"

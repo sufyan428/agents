@@ -1,0 +1,135 @@
+groups:
+  - name: security_agent_alerts
+    interval: 30s
+    rules:
+      # Agent is down
+      - alert: SecurityAgentDown
+        expr: security_agent_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: security-id-agent
+        annotations:
+          summary: "Security & Intrusion Detection Agent is down"
+          description: "The Security Agent has been down for more than 1 minute."
+
+      # High rate of failed logins
+      - alert: HighFailedLoginRate
+        expr: rate(security_agent_failed_login_attempts_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: security-id-agent
+        annotations:
+          summary: "High rate of failed login attempts detected"
+          description: "Failed login rate is {{ $value }} attempts per second over the last 5 minutes."
+
+      # Account lockouts detected
+      - alert: AccountLockoutDetected
+        expr: increase(security_agent_account_lockouts_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          service: security-id-agent
+        annotations:
+          summary: "Account lockouts detected"
+          description: "{{ $value }} account lockouts in the last 5 minutes."
+
+      # Configuration drift detected
+      - alert: ConfigurationDriftDetected
+        expr: security_agent_configuration_drift_score > 0
+        for: 5m
+        labels:
+          severity: high
+          service: security-id-agent
+        annotations:
+          summary: "Configuration drift detected"
+          description: "Configuration drift score is {{ $value }}. Configuration differs from golden baseline."
+
+      # Critical configuration changes
+      - alert: CriticalConfigurationChange
+        expr: rate(security_agent_configuration_changes_total{severity="critical"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: security-id-agent
+        annotations:
+          summary: "Critical configuration changes detected"
+          description: "Critical configuration changes have been detected."
+
+      # Traffic anomalies
+      - alert: TrafficAnomalyDetected
+        expr: rate(security_agent_traffic_anomalies_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: security-id-agent
+        annotations:
+          summary: "Traffic anomalies detected"
+          description: "Traffic anomalies detected at rate of {{ $value }} per second."
+
+      # DDoS attack pattern
+      - alert: PotentialDDoSAttack
+        expr: rate(security_agent_threats_detected_total{threat_type="ddos_attack"}[1m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: security-id-agent
+        annotations:
+          summary: "Potential DDoS attack detected"
+          description: "DDoS attack patterns have been detected."
+
+      # Port scanning detected
+      - alert: PortScanningDetected
+        expr: rate(security_agent_port_scans_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: high
+          service: security-id-agent
+        annotations:
+          summary: "Port scanning activity detected"
+          description: "Port scanning activity detected at rate of {{ $value }} per second."
+
+      # Host unreachable
+      - alert: RouterUnreachable
+        expr: rate(security_agent_icmp_pings_total{status="failed"}[2m]) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          service: security-id-agent
+        annotations:
+          summary: "Router unreachable"
+          description: "High rate of failed ICMP pings. Router may be unreachable."
+
+      # High ICMP latency
+      - alert: HighNetworkLatency
+        expr: histogram_quantile(0.95, rate(security_agent_icmp_response_time_seconds_bucket[5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          service: security-id-agent
+        annotations:
+          summary: "High network latency detected"
+          description: "95th percentile ICMP response time is {{ $value }} seconds."
+
+      # ACL violations
+      - alert: ACLViolationsDetected
+        expr: rate(security_agent_acl_violations_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          service: security-id-agent
+        annotations:
+          summary: "ACL violations detected"
+          description: "ACL violations detected at rate of {{ $value }} per second."
+
+      # Unusual protocols
+      - alert: UnusualProtocolUsage
+        expr: rate(security_agent_threats_detected_total{threat_type="unusual_protocol"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: medium
+          service: security-id-agent
+        annotations:
+          summary: "Unusual protocol usage detected"
+          description: "Unusual or potentially dangerous protocols have been detected."

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Secrets - never commit these
+.env
+.env.local
+.env.*.local
+
+# Runtime output
+logs/
+*.log
+npm-debug.log*
+data/
+configs/backups/
+reports/*.md
+
+# Docker volume data (Grafana/Prometheus write here at runtime)
+monitoring/
+grafana-data/
+prometheus-data/
+
+# Build & test output
+coverage/
+.nyc_output/
+dist/
+build/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# NOTE: package-lock.json is intentionally NOT ignored.
+# CI runs `npm ci`, which requires a committed lockfile.

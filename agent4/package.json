@@ -1,0 +1,36 @@
+{
+  "name": "router-performance-optimization-agent",
+  "version": "1.0.0",
+  "description": "Agent for optimizing router performance in mission-critical environments",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "test": "node test-simulation.js"
+  },
+  "keywords": [
+    "router",
+    "performance",
+    "optimization",
+    "snmp",
+    "icmp",
+    "syslog",
+    "qos",
+    "prometheus",
+    "grafana"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.1",
+    "net-snmp": "^3.11.0",
+    "ping": "^0.4.4",
+    "prom-client": "^15.1.0",
+    "syslog-client": "^1.1.1",
+    "winston": "^3.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

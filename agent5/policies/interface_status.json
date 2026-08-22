@@ -1,0 +1,18 @@
+{
+  "name": "Interface Status Check",
+  "description": "Ensure all critical interfaces are in UP state",
+  "type": "snmp_oid",
+  "severity": "high",
+  "oid": "1.3.6.1.2.1.2.2.1.8.1",
+  "operator": "eq",
+  "expectedValue": "1",
+  "healing": {
+    "enabled": true,
+    "strategy": "interface_up",
+    "max_retries": 3
+  },
+  "metadata": {
+    "category": "connectivity",
+    "compliance": "required"
+  }
+}

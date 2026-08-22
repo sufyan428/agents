@@ -1,0 +1,48 @@
+server:
+  port: 9094
+  metrics_path: /metrics
+  health_path: /health
+governance:
+  auto_heal: true
+  enforce_policies: true
+  backup_before_changes: true
+  approval_required: false
+scheduling:
+  policy_check_interval: '*/5 * * * *'
+  backup_interval: 0 2 * * *
+  firmware_check_interval: 0 3 * * 0
+  audit_report_interval: 0 6 * * 0
+  config_compliance_check: '*/10 * * * *'
+backup:
+  enabled: true
+  retention_days: 30
+  directory: ./configs/backups
+  compression: true
+logging:
+  level: info
+  directory: ./logs
+  max_files: 10
+  max_size: 10m
+metrics:
+  enabled: true
+  port: 9094
+audit:
+  enabled: true
+  directory: ./logs/audit
+  format: json
+  include_details: true
+self_healing:
+  enabled: true
+  max_retries: 3
+  retry_delay: 60
+  notify_on_failure: true
+notifications:
+  enabled: false
+  email:
+    enabled: false
+  webhook:
+    enabled: false
+syslog:
+  enabled: true
+  protocol: udp
+  port: 5144

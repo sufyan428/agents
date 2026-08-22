@@ -1,0 +1,51 @@
+# AI Reporting Agent - non-secret settings.
+# The API key itself is BYOK - paste it once into agent6/.env (shared across
+# all AI agents) or, for standalone runs, into this agent's own .env.
+
+server:
+  port: 9097
+  health_path: /health
+  metrics_path: /metrics
+
+orchestrator:
+  base_url: "http://localhost:8080"
+  timeout_ms: 5000
+
+# Where this agent pulls source data from. agent5 already produces structured
+# compliance/audit/configuration/self-healing reports - this agent narrates
+# them rather than re-collecting anything. agent7 is optional context (recent
+# cross-agent incident correlations) and is skipped gracefully if unreachable
+# or disabled (no API key configured).
+sources:
+  agent5_url: "http://localhost:9094"
+  agent7_url: "http://localhost:9096"
+  timeout_ms: 15000
+  report_types:
+    - compliance
+    - audit
+    - configuration
+    - self_healing
+
+ai:
+  provider: "auto"
+  anthropic:
+    model: "claude-opus-4-8"
+    effort: "medium"
+  openrouter:
+    # Chosen for reliability, not raw size - the biggest free models on
+    # OpenRouter are the most oversubscribed. Swap via OPENROUTER_MODEL
+    # (or here) to any "provider/model:free" id from https://openrouter.ai/models.
+    model: "openai/gpt-oss-20b:free"
+  max_tokens: 4096
+  request_timeout_ms: 45000
+
+schedule:
+  digest_cron: "0 6 * * *"   # daily at 06:00
+  history_size: 30
+
+reports:
+  output_directory: "./reports"
+
+logging:
+  level: "info"
+  directory: "./logs"

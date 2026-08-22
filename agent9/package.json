@@ -1,0 +1,33 @@
+{
+  "name": "ai-remediation-agent",
+  "version": "1.0.0",
+  "description": "AI Remediation Advisor - suggests fixes for compliance violations and performance anomalies, generates incident runbooks, and reviews proposed config changes for risk. Suggest-only, never auto-executes. Claude or OpenRouter (BYOK)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "router",
+    "ai",
+    "remediation",
+    "runbook",
+    "risk-review"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.0",
+    "express": "^4.18.2",
+    "axios": "^1.6.2",
+    "js-yaml": "^4.1.0",
+    "winston": "^3.11.0",
+    "prom-client": "^15.1.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

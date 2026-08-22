@@ -1,0 +1,114 @@
+# Master Router Configuration
+# This single file configures ALL 5 agents
+# WiFi Router Organization: Only change the IP addresses and SNMP community strings below
+
+router:
+  # PRIMARY ROUTER CONFIGURATION
+  primary:
+    host: "192.168.1.1"              # CHANGE THIS to your primary router IP
+    snmp_community: "public"          # CHANGE THIS to your SNMP community string
+    snmp_version: "2c"
+    snmp_port: 161
+    location: "Main-Office"
+    type: "cisco"                     # cisco, juniper, mikrotik, etc.
+  
+  # BACKUP ROUTER (for Agent 2 - Resilience & Failover)
+  backup:
+    host: "192.168.1.2"              # CHANGE THIS to your backup router IP
+    snmp_community: "public"          # CHANGE THIS to your SNMP community string
+    snmp_version: "2c"
+    snmp_port: 161
+    location: "Backup-Office"
+    type: "cisco"
+
+# Syslog Configuration (all agents will receive syslog from routers)
+syslog:
+  port: 514
+  protocol: "udp"
+
+# SNMP Trap Configuration
+snmp_traps:
+  port: 162
+  protocol: "udp"
+
+# Agent Configuration (usually don't need to change these)
+agents:
+  # Agent 1: Monitoring
+  monitoring:
+    enabled: true
+    port: 9090
+    metrics_interval: 30              # seconds
+    
+  # Agent 2: Resilience & Failover
+  resilience:
+    enabled: true
+    port: 9091
+    auto_failover: true
+    heartbeat_interval: 5             # seconds
+    max_missed_heartbeats: 3
+    failback_enabled: true
+    failback_delay: 30                # seconds
+    
+  # Agent 3: Security & Intrusion Detection
+  security:
+    enabled: true
+    port: 9092
+    alert_level: "high"               # low, medium, high, critical
+    max_failed_attempts: 5
+    
+  # Agent 4: Performance Optimization
+  performance:
+    enabled: true
+    port: 9093
+    auto_optimize: false              # Set to true for automatic optimization
+    threshold_cpu: 80                 # percent
+    threshold_memory: 85              # percent
+    threshold_latency: 100            # milliseconds
+    
+  # Agent 5: Automation & Governance
+  automation:
+    enabled: true
+    port: 9094
+    auto_heal: true                   # Automatically fix compliance violations
+    compliance_check_interval: 300    # seconds (5 minutes)
+
+  # Agent 7: AI Correlation & Reasoning (optional, BYOK)
+  # Agent 8: AI Reporting (optional, BYOK)
+  # Agent 9: AI Remediation Advisor (optional, BYOK) - suggest-only, never auto-applies
+  # Agent 10: AI ChatOps (optional, BYOK) - natural-language interface + proactive push
+  # All four only actually start if an OPENROUTER_API_KEY or ANTHROPIC_API_KEY is
+  # configured - paste one into agent6/.env and all four pick it up automatically.
+  # Set enabled: false here to turn any of them off regardless of a configured key.
+  correlation:
+    enabled: true
+    port: 9096
+
+  reporting:
+    enabled: true
+    port: 9097
+
+  remediation:
+    enabled: true
+    port: 9098
+
+  chatops:
+    enabled: true
+    port: 9099
+
+# Orchestrator Configuration
+orchestrator:
+  api_port: 8080
+  health_check_interval: 10           # seconds
+  auto_restart_failed_agents: true
+  log_level: "info"                   # debug, info, warn, error
+
+# Prometheus Configuration
+prometheus:
+  port: 9095
+  scrape_interval: 15                 # seconds
+
+# Grafana Configuration
+grafana:
+  port: 3000
+  admin_user: "admin"
+  admin_password: "admin"             # CHANGE THIS in production

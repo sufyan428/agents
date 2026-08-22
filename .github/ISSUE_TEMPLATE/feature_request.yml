@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a capability or improvement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two things this project will not accept, so you don't spend time on them:
+        an AI API call inside agents 1-6, or an automatic apply-to-device path
+        with no human confirmation. See [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the operational situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Where does this belong?
+      options:
+        - Deterministic core (agents 1-6)
+        - AI layer (agents 7-10)
+        - Orchestrator / framework-wide
+        - Tooling, docs, or CI
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd be willing to open a PR for this

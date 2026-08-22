@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+*.log
+logs/*
+data/*
+.env
+.git
+.gitignore
+README.md
+test.md
+monitoring/*
+config/router.yml.example
+config/router.yml

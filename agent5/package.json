@@ -1,0 +1,41 @@
+{
+  "name": "automation-governance-agent",
+  "version": "1.0.0",
+  "description": "Automation & Governance Agent for Router Framework - Enforces compliance, automates tasks, and provides governance for mission-critical network environments",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node tests/test.js"
+  },
+  "keywords": [
+    "router",
+    "automation",
+    "governance",
+    "compliance",
+    "snmp",
+    "netconf",
+    "restconf",
+    "monitoring"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "net-snmp": "^3.9.1",
+    "prom-client": "^15.1.0",
+    "node-cron": "^3.0.3",
+    "axios": "^1.6.2",
+    "winston": "^3.11.0",
+    "yaml": "^2.3.4",
+    "ssh2": "^1.15.0",
+    "xml2js": "^0.6.2",
+    "joi": "^17.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

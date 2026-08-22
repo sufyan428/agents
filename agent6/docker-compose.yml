@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # Agent 1: Monitoring
+  agent1-monitoring:
+    build:
+      context: ../agent1
+      dockerfile: Dockerfile
+    container_name: agent1-monitoring
+    ports:
+      - "9090:3000"
+      - "514:514/udp"
+    volumes:
+      - ../agent1/config:/app/config:ro
+      - ../agent1/logs:/app/logs
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Agent 2: Resilience & Failover
+  agent2-resilience:
+    build:
+      context: ../agent2
+      dockerfile: Dockerfile
+    container_name: agent2-resilience
+    ports:
+      - "9091:9090"
+    volumes:
+      - ../agent2/config:/app/config:ro
+      - ../agent2/logs:/app/logs
+      - ../agent2/data:/app/data
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Agent 3: Security & Intrusion Detection
+  agent3-security:
+    build:
+      context: ../agent3
+      dockerfile: Dockerfile
+    container_name: agent3-security
+    ports:
+      - "9092:9091"
+      - "515:514/udp"
+      - "162:162/udp"
+    volumes:
+      - ../agent3/config:/app/config:ro
+      - ../agent3/logs:/app/logs
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Agent 4: Performance Optimization
+  agent4-performance:
+    build:
+      context: ../agent4
+      dockerfile: Dockerfile
+    container_name: agent4-performance
+    ports:
+      - "9093:9091"
+    volumes:
+      - ../agent4:/app:ro
+      - ../agent4/logs:/app/logs
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9091/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Agent 5: Automation & Governance
+  agent5-automation:
+    build:
+      context: ../agent5
+      dockerfile: Dockerfile
+    container_name: agent5-automation
+    ports:
+      - "9094:9091"
+    volumes:
+      - ../agent5:/app:ro
+      - ../agent5/logs:/app/logs
+      - ../agent5/configs:/app/configs
+    networks:
+      - router-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Unified Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: unified-prometheus
+    ports:
+      - "9095:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - router-network
+    restart: unless-stopped
+
+  # Unified Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: unified-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - router-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+networks:
+  router-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

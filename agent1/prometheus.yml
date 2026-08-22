@@ -1,0 +1,44 @@
+# Prometheus Configuration for Router Monitoring Agent
+
+global:
+  scrape_interval: 15s        # How often to scrape targets
+  evaluation_interval: 15s    # How often to evaluate rules
+  external_labels:
+    cluster: 'router-monitoring'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      # Uncomment and configure if using Alertmanager
+      # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alerts.yml"  # Uncomment to enable custom alert rules
+
+# Scrape configurations
+# Scrape configurations
+scrape_configs:
+  - job_name: 'router-monitoring-agent'
+    static_configs:
+      - targets: ['monitoring-agent:3000']
+        labels:
+          service: 'monitoring-agent'
+          environment: 'production'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+        labels:
+          service: 'prometheus'
+
+
+  # Monitor Grafana (optional)
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: 'grafana'

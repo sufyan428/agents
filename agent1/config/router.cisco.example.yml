@@ -1,0 +1,104 @@
+# Router Configuration
+# Define the routers to monitor and their connection details
+# Organizations can add vendor-specific OIDs in the metrics section
+
+routers:
+  # Example: Localhost for testing with SNMP simulator
+  - name: "Router-Primary"
+    ip: "127.0.0.1"
+    port: 161
+    version: "2c"
+    community: "public"
+    enabled: true
+    poll_interval: 30  # seconds
+    
+    # Metrics configuration - organizations can add vendor-specific OIDs here
+    metrics:
+      # Standard MIB-II OIDs (safe defaults for testing)
+      uptime: "1.3.6.1.2.1.1.3.0"
+      sysDescr: "1.3.6.1.2.1.1.1.0"
+      sysName: "1.3.6.1.2.1.1.5.0"
+      
+      # CPU utilization (Cisco-specific - replace with vendor OIDs)
+      cpu: "1.3.6.1.4.1.9.2.1.56.0"
+      
+      # Memory utilization (Cisco-specific - replace with vendor OIDs)
+      memory_used: "1.3.6.1.4.1.9.2.1.8.0"
+      memory_total: "1.3.6.1.4.1.9.2.1.7.0"
+      
+      # Interface statistics
+      interface_in: "1.3.6.1.2.1.2.2.1.10"
+      interface_out: "1.3.6.1.2.1.2.2.1.16"
+      interface_errors: "1.3.6.1.2.1.2.2.1.14"
+      
+      # Temperature (optional - vendor-specific)
+      temperature: "1.3.6.1.4.1.9.9.13.1.3.1.3"
+
+  - name: "Router-Secondary"
+    ip: "192.168.1.2"
+    port: 161
+    version: "2c"
+    community: "public"
+    enabled: true
+    poll_interval: 30
+    
+    metrics:
+      uptime: "1.3.6.1.2.1.1.3.0"
+      sysDescr: "1.3.6.1.2.1.1.1.0"
+      sysName: "1.3.6.1.2.1.1.5.0"
+      cpu: "1.3.6.1.4.1.9.2.1.56.0"
+      memory_used: "1.3.6.1.4.1.9.2.1.8.0"
+      memory_total: "1.3.6.1.4.1.9.2.1.7.0"
+      interface_in: "1.3.6.1.2.1.2.2.1.10"
+      interface_out: "1.3.6.1.2.1.2.2.1.16"
+      interface_errors: "1.3.6.1.2.1.2.2.1.14"
+      temperature: "1.3.6.1.4.1.9.9.13.1.3.1.3"
+
+  - name: "Router-Backup"
+    ip: "192.168.1.3"
+    port: 161
+    version: "2c"
+    community: "public"
+    enabled: false
+    poll_interval: 60
+    
+    metrics:
+      uptime: "1.3.6.1.2.1.1.3.0"
+      sysDescr: "1.3.6.1.2.1.1.1.0"
+      sysName: "1.3.6.1.2.1.1.5.0"
+      cpu: "1.3.6.1.4.1.9.2.1.56.0"
+      memory_used: "1.3.6.1.4.1.9.2.1.8.0"
+      memory_total: "1.3.6.1.4.1.9.2.1.7.0"
+      interface_in: "1.3.6.1.2.1.2.2.1.10"
+      interface_out: "1.3.6.1.2.1.2.2.1.16"
+      interface_errors: "1.3.6.1.2.1.2.2.1.14"
+
+# Global default OIDs (used as fallback if not defined per router)
+# Organizations can customize these for their specific network equipment vendors
+default_oids:
+  uptime: "1.3.6.1.2.1.1.3.0"
+  sysDescr: "1.3.6.1.2.1.1.1.0"
+  sysName: "1.3.6.1.2.1.1.5.0"
+  
+  # Cisco-specific OIDs
+  cpu: "1.3.6.1.4.1.9.2.1.56.0"
+  memory_used: "1.3.6.1.4.1.9.2.1.8.0"
+  memory_total: "1.3.6.1.4.1.9.2.1.7.0"
+  temperature: "1.3.6.1.4.1.9.9.13.1.3.1.3"
+  
+  # Standard interface OIDs
+  interface_in: "1.3.6.1.2.1.2.2.1.10"
+  interface_out: "1.3.6.1.2.1.2.2.1.16"
+  interface_errors: "1.3.6.1.2.1.2.2.1.14"
+
+# Syslog configuration
+syslog:
+  enabled: true
+  port: 514
+  protocol: "udp"
+
+# Note: NetFlow collector has been removed as requested
+# To add vendor-specific OIDs, add them to the metrics section for each router
+# Example for Juniper devices:
+#   cpu: "1.3.6.1.4.1.2636.3.1.13.1.8.9.1.0.0"
+#   memory_used: "1.3.6.1.4.1.2636.3.1.13.1.11.9.1.0.0"

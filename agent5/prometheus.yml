@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'router-governance-monitor'
+
+scrape_configs:
+  - job_name: 'automation-governance-agent'
+    static_configs:
+      - targets: ['automation-governance-agent:9091']
+        labels:
+          agent: 'automation-governance'
+          environment: 'production'
+    scrape_interval: 10s
+    scrape_timeout: 5s

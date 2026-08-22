@@ -1,0 +1,43 @@
+{
+  "name": "resilience-failover-agent",
+  "version": "1.0.0",
+  "description": "Router Resilience & Failover Agent with SNMP, ICMP, and Syslog monitoring",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node src/test/test.js",
+    "docker:build": "docker build -t resilience-failover-agent .",
+    "docker:run": "docker run -p 9090:9090 -p 514:514/udp -v $(pwd)/config:/app/config resilience-failover-agent"
+  },
+  "keywords": [
+    "router",
+    "failover",
+    "snmp",
+    "monitoring",
+    "prometheus",
+    "high-availability"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^15.1.0",
+    "snmp-native": "^1.2.0",
+    "ping": "^0.4.4",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "node-cron": "^3.0.3",
+    "js-yaml": "^4.1.0",
+    "axios": "^1.6.2",
+    "ws": "^8.16.0",
+    "netconf": "^1.0.0",
+    "syslog-client": "^1.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

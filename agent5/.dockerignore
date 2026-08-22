@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Git
+.git
+.gitignore
+
+# Documentation (keep in repo but don't copy to image)
+*.md
+!README.md
+
+# Logs
+logs
+*.log
+
+# Config backups
+configs/backups
+
+# Test files
+tests
+*.test.js
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp
+temp
+*.tmp

@@ -1,0 +1,67 @@
+router:
+  host: 192.168.1.1
+  port: 161
+  snmp:
+    community: public
+    version: 2c
+    timeout: 5000
+security:
+  authentication:
+    max_failed_attempts: 5
+    time_window_seconds: 300
+    lockout_threshold: 10
+  traffic:
+    baseline_samples: 100
+    anomaly_threshold: 3
+    spike_threshold: 5
+  configuration:
+    validation_interval: 300
+    critical_changes:
+      - acl
+      - security-policy
+      - firewall
+      - nat
+syslog:
+  enabled: true
+  protocol: udp
+  port: 5142
+icmp:
+  enabled: true
+  interval: 30
+  timeout: 5000
+alerts:
+  severity:
+    critical:
+      enabled: true
+    high:
+      enabled: true
+    medium:
+      enabled: true
+    low:
+      enabled: true
+  channels:
+    console: true
+    log: true
+    webhook: false
+  webhook:
+    url: ''
+    timeout: 5000
+logging:
+  level: info
+  directory: ./logs
+  date_pattern: YYYY-MM-DD
+  max_size: 20m
+  max_files: 14d
+prometheus:
+  enabled: true
+  port: 9092
+  path: /metrics
+agent:
+  name: security-intrusion-detection-agent
+  instance: agent3-01
+  environment: production
+snmp_traps:
+  port: 162
+  protocol: udp
+server:
+  port: 9092

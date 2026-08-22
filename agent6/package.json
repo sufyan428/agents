@@ -1,0 +1,41 @@
+{
+  "name": "router-framework-orchestrator",
+  "version": "1.0.0",
+  "description": "Framework Orchestrator Agent - Unified management for all 5 router monitoring agents",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node tests/test.js",
+    "install-all": "bash scripts/install-all.sh",
+    "start-all": "docker-compose up -d",
+    "stop-all": "docker-compose down",
+    "logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "router",
+    "orchestrator",
+    "framework",
+    "monitoring",
+    "unified",
+    "management"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
+    "winston": "^3.11.0",
+    "axios": "^1.6.2",
+    "prom-client": "^15.1.0",
+    "node-cron": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

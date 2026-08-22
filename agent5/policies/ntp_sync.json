@@ -1,0 +1,16 @@
+{
+  "name": "NTP Synchronization Check",
+  "description": "Ensure router is synchronized with NTP servers",
+  "type": "configuration",
+  "severity": "low",
+  "expectedValue": "synced",
+  "healing": {
+    "enabled": true,
+    "strategy": "resync_ntp",
+    "max_retries": 3
+  },
+  "metadata": {
+    "category": "timekeeping",
+    "compliance": "recommended"
+  }
+}

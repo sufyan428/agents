@@ -1,0 +1,122 @@
+#!/usr/bin/env node
+require('dotenv').config();
+
+const logger = require('./utils/logger');
+const configManager = require('./config-manager');
+const agentManager = require('./agent-manager');
+const apiGateway = require('./api-gateway');
+
+class Orchestrator {
+    constructor() {
+        this.running = false;
+    }
+
+    async start() {
+        try {
+            logger.info('='.repeat(60));
+            logger.info('Router Framework Orchestrator - Starting');
+            logger.info('='.repeat(60));
+
+            // Load master configuration
+            logger.info('Loading master configuration...');
+            const masterConfig = configManager.loadMasterConfig();
+
+            // Distribute configurations to all agents
+            logger.info('Distributing configurations to agents...');
+            configManager.distributeConfigs();
+
+            // Initialize agent manager
+            logger.info('Initializing agent manager...');
+            await agentManager.initializeAgents(masterConfig.agents);
+
+            // Start API Gateway
+            const apiPort = masterConfig.orchestrator.api_port;
+            logger.info(`Starting API Gateway on port ${apiPort}...`);
+            await apiGateway.start(apiPort);
+
+            // Start all enabled agents
+            logger.info('Starting all enabled agents...');
+            agentManager.startAllAgents();
+
+            // Start health monitoring
+            const healthInterval = masterConfig.orchestrator.health_check_interval * 1000;
+            logger.info(`Starting health monitoring (interval: ${healthInterval}ms)...`);
+            agentManager.startHealthMonitoring(healthInterval);
+
+            this.running = true;
+
+            logger.info('='.repeat(60));
+            logger.info('Router Framework Orchestrator - Started Successfully');
+            logger.info('='.repeat(60));
+            logger.info(`API Gateway: http://localhost:${apiPort}`);
+            logger.info(`Health Check: http://localhost:${apiPort}/health`);
+            logger.info(`System Overview: http://localhost:${apiPort}/api/overview`);
+            logger.info('='.repeat(60));
+
+        } catch (error) {
+            logger.error(`Failed to start orchestrator: ${error.message}`);
+            logger.error(error.stack);
+            process.exit(1);
+        }
+    }
+
+    async stop() {
+        if (!this.running) {
+            return;
+        }
+
+        logger.info('Shutting down orchestrator...');
+
+        try {
+            // Stop health monitoring
+            agentManager.stopHealthMonitoring();
+
+            // Stop all agents
+            logger.info('Stopping all agents...');
+            agentManager.stopAllAgents();
+
+            // Stop API Gateway
+            logger.info('Stopping API Gateway...');
+            await apiGateway.stop();
+
+            this.running = false;
+            logger.info('Orchestrator stopped successfully');
+        } catch (error) {
+            logger.error(`Error during shutdown: ${error.message}`);
+        }
+    }
+}
+
+// Create orchestrator instance
+const orchestrator = new Orchestrator();
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+    logger.info('Received SIGTERM signal');
+    await orchestrator.stop();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    logger.info('Received SIGINT signal');
+    await orchestrator.stop();
+    process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    logger.error(`Uncaught exception: ${error.message}`);
+    logger.error(error.stack);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+    process.exit(1);
+});
+
+// Start orchestrator
+orchestrator.start().catch((error) => {
+    logger.error(`Fatal error: ${error.message}`);
+    process.exit(1);
+});

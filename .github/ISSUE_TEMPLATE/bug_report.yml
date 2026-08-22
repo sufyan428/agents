@@ -1,0 +1,91 @@
+name: Bug report
+description: Something in the framework behaves incorrectly
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: if this is a **security** issue, do not open a public
+        issue — see [SECURITY.md](../blob/main/SECURITY.md) instead.
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Which agent?
+      options:
+        - agent1 - monitoring
+        - agent2 - resilience/failover
+        - agent3 - security/IDS
+        - agent4 - performance
+        - agent5 - automation/governance
+        - agent6 - orchestrator
+        - agent7 - correlation (AI)
+        - agent8 - reporting (AI)
+        - agent9 - remediation advisor (AI)
+        - agent10 - chatops (AI)
+        - The framework as a whole / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you observed, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. cd agent6 && npm start
+        2. curl -X POST localhost:8080/api/agents/agent2-resilience/stop
+        3. Agent restarts itself 5 seconds later
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Redact hostnames, IPs, and community strings before pasting.
+      render: shell
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: "node --version"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-run
+    attributes:
+      label: How are you running it?
+      options:
+        - Bare Node via the orchestrator
+        - Bare Node, single agent standalone
+        - Docker Compose
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Target device
+      options:
+        - The bundled router simulator
+        - Real hardware
+        - No device / placeholder IPs
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: AI layer
+      options:
+        - label: Agents 7-10 were enabled (an API key was configured) when this happened

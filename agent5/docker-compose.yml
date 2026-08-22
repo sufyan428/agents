@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  automation-governance-agent:
+    build: .
+    container_name: automation-governance-agent
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./router.yml:/app/router.yml:ro
+      - ./config.yml:/app/config.yml:ro
+      - ./policies:/app/policies:ro
+      - ./logs:/app/logs
+      - ./configs:/app/configs
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - router-governance-network
+    depends_on:
+      - prometheus
+      - grafana
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-governance
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - router-governance-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-governance
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    networks:
+      - router-governance-network
+
+networks:
+  router-governance-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

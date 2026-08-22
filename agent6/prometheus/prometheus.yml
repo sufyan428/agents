@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'router-framework'
+
+scrape_configs:
+  # Agent 1: Monitoring
+  - job_name: 'agent1-monitoring'
+    static_configs:
+      - targets: ['agent1-monitoring:3000']
+        labels:
+          agent: 'monitoring'
+          instance: 'agent1'
+
+  # Agent 2: Resilience & Failover
+  - job_name: 'agent2-resilience'
+    static_configs:
+      - targets: ['agent2-resilience:9090']
+        labels:
+          agent: 'resilience'
+          instance: 'agent2'
+
+  # Agent 3: Security & Intrusion Detection
+  - job_name: 'agent3-security'
+    static_configs:
+      - targets: ['agent3-security:9091']
+        labels:
+          agent: 'security'
+          instance: 'agent3'
+
+  # Agent 4: Performance Optimization
+  - job_name: 'agent4-performance'
+    static_configs:
+      - targets: ['agent4-performance:9091']
+        labels:
+          agent: 'performance'
+          instance: 'agent4'
+
+  # Agent 5: Automation & Governance
+  - job_name: 'agent5-automation'
+    static_configs:
+      - targets: ['agent5-automation:9091']
+        labels:
+          agent: 'automation'
+          instance: 'agent5'

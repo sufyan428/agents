@@ -1,0 +1,48 @@
+# AI Remediation Advisor - non-secret settings.
+# The API key itself is BYOK - paste it once into agent6/.env (shared across
+# all AI agents) or, for standalone runs, into this agent's own .env.
+#
+# This agent NEVER auto-applies anything it suggests - every output requires
+# a human to read it and act. There is no "auto_apply" setting to flip; that
+# is deliberate, not a missing feature.
+
+server:
+  port: 9098
+  health_path: /health
+  metrics_path: /metrics
+
+orchestrator:
+  base_url: "http://localhost:8080"
+  timeout_ms: 5000
+
+sources:
+  agent5_url: "http://localhost:9094"
+  agent4_url: "http://localhost:9093"
+  agent7_url: "http://localhost:9096"
+  timeout_ms: 15000
+  # Below this efficiencyScore, agent4's health is treated as a performance
+  # anomaly worth reviewing. Low scores are expected/noisy in a dev
+  # environment with no real router hardware - the LLM is told this so it
+  # doesn't cry wolf over the environment's own known limitation.
+  efficiency_score_threshold: 50
+
+ai:
+  provider: "auto"
+  anthropic:
+    model: "claude-opus-4-8"
+    effort: "medium"
+  openrouter:
+    # Chosen for reliability, not raw size - the biggest free models on
+    # OpenRouter are the most oversubscribed. Swap via OPENROUTER_MODEL
+    # (or here) to any "provider/model:free" id from https://openrouter.ai/models.
+    model: "openai/gpt-oss-20b:free"
+  max_tokens: 4096
+  request_timeout_ms: 45000
+
+polling:
+  interval_seconds: 120
+  history_size: 30
+
+logging:
+  level: "info"
+  directory: "./logs"

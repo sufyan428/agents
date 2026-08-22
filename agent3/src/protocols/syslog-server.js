@@ -1,0 +1,296 @@
+/**
+ * Syslog Server Module
+ * 
+ * Listens for syslog messages from routers and processes them
+ * for security events
+ */
+
+const dgram = require('dgram');
+
+class SyslogServer {
+  constructor(config, logger, metrics, authenticationMonitor, trafficAnalyzer) {
+    this.config = config;
+    this.logger = logger;
+    this.metrics = metrics;
+    this.authenticationMonitor = authenticationMonitor;
+    this.trafficAnalyzer = trafficAnalyzer;
+
+    this.server = null;
+    this.isRunning = false;
+    this.messageCount = 0;
+  }
+
+  /**
+   * Start syslog server
+   */
+  async start() {
+    return new Promise((resolve, reject) => {
+      try {
+        this.server = dgram.createSocket('udp4');
+
+        this.server.on('message', (msg, rinfo) => {
+          this.handleMessage(msg, rinfo);
+        });
+
+        this.server.on('error', (error) => {
+          this.logger.error('Syslog server error:', error);
+          reject(error);
+        });
+
+        this.server.on('listening', () => {
+          const address = this.server.address();
+          this.logger.info('Syslog server listening', {
+            address: address.address,
+            port: address.port
+          });
+          this.isRunning = true;
+          resolve();
+        });
+
+        this.server.bind(this.config.port, this.config.bind_address);
+
+      } catch (error) {
+        this.logger.error('Failed to start syslog server:', error);
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Stop syslog server
+   */
+  async stop() {
+    if (this.server) {
+      return new Promise((resolve) => {
+        this.server.close(() => {
+          this.isRunning = false;
+          this.logger.info('Syslog server stopped');
+          resolve();
+        });
+      });
+    }
+  }
+
+  /**
+   * Handle incoming syslog message
+   */
+  handleMessage(msg, rinfo) {
+    try {
+      const messageStr = msg.toString('utf8');
+      this.messageCount++;
+
+      // Parse syslog message
+      const syslogData = this.parseSyslogMessage(messageStr, rinfo);
+
+      // Update metrics
+      this.metrics.recordSyslogMessage(syslogData.facility, syslogData.severity);
+
+      this.logger.debug('Syslog message received', {
+        source_ip: rinfo.address,
+        source_port: rinfo.port,
+        facility: syslogData.facility,
+        severity: syslogData.severity,
+        message: syslogData.message
+      });
+
+      // Process for authentication events
+      if (this.authenticationMonitor) {
+        this.authenticationMonitor.processSyslogMessage(syslogData);
+      }
+
+      // Process for traffic events
+      if (this.trafficAnalyzer) {
+        this.processTrafficFromSyslog(syslogData);
+      }
+
+    } catch (error) {
+      this.logger.error('Error handling syslog message:', error);
+    }
+  }
+
+  /**
+   * Parse syslog message
+   */
+  parseSyslogMessage(messageStr, rinfo) {
+    // RFC3164 format: <priority>hostname tag message
+    // RFC5424 format: <priority>version timestamp hostname app-name procid msgid structured-data message
+
+    const syslogData = {
+      raw: messageStr,
+      source_ip: rinfo.address,
+      source_port: rinfo.port,
+      timestamp: new Date().toISOString(),
+      facility: 'unknown',
+      severity: 'unknown',
+      hostname: rinfo.address,
+      tag: '',
+      message: messageStr
+    };
+
+    // Try to parse priority
+    const priorityMatch = messageStr.match(/^<(\d+)>(.*)/);
+    if (priorityMatch) {
+      const priority = parseInt(priorityMatch[1]);
+      syslogData.facility = this.getFacilityName(Math.floor(priority / 8));
+      syslogData.severity = this.getSeverityName(priority % 8);
+
+      // Remove priority from message
+      const remaining = priorityMatch[2];
+      
+      // Try to parse as RFC5424
+      const rfc5424Match = remaining.match(/^(\d+)\s+(.+?)\s+(.+?)\s+(.+?)\s+(.+?)\s+(.+?)\s+(.*?)\s+(.*)$/);
+      if (rfc5424Match) {
+        syslogData.version = rfc5424Match[1];
+        syslogData.timestamp = rfc5424Match[2];
+        syslogData.hostname = rfc5424Match[3];
+        syslogData.app_name = rfc5424Match[4];
+        syslogData.proc_id = rfc5424Match[5];
+        syslogData.msg_id = rfc5424Match[6];
+        syslogData.structured_data = rfc5424Match[7];
+        syslogData.message = rfc5424Match[8] || '';
+      } else {
+        // Try to parse as RFC3164
+        const rfc3164Match = remaining.match(/^(\S+\s+\d+\s+\d+:\d+:\d+)\s+(\S+)\s+([^:]+):\s*(.*)/);
+        if (rfc3164Match) {
+          syslogData.timestamp = rfc3164Match[1];
+          syslogData.hostname = rfc3164Match[2];
+          syslogData.tag = rfc3164Match[3];
+          syslogData.message = rfc3164Match[4] || '';
+        } else {
+          syslogData.message = remaining;
+        }
+      }
+    }
+
+    return syslogData;
+  }
+
+  /**
+   * Get facility name from code
+   */
+  getFacilityName(code) {
+    const facilities = {
+      0: 'kern',
+      1: 'user',
+      2: 'mail',
+      3: 'daemon',
+      4: 'auth',
+      5: 'syslog',
+      6: 'lpr',
+      7: 'news',
+      8: 'uucp',
+      9: 'cron',
+      10: 'authpriv',
+      11: 'ftp',
+      12: 'ntp',
+      13: 'audit',
+      14: 'alert',
+      15: 'clock',
+      16: 'local0',
+      17: 'local1',
+      18: 'local2',
+      19: 'local3',
+      20: 'local4',
+      21: 'local5',
+      22: 'local6',
+      23: 'local7'
+    };
+
+    return facilities[code] || 'unknown';
+  }
+
+  /**
+   * Get severity name from code
+   */
+  getSeverityName(code) {
+    const severities = {
+      0: 'emergency',
+      1: 'alert',
+      2: 'critical',
+      3: 'error',
+      4: 'warning',
+      5: 'notice',
+      6: 'informational',
+      7: 'debug'
+    };
+
+    return severities[code] || 'unknown';
+  }
+
+  /**
+   * Process traffic information from syslog
+   */
+  processTrafficFromSyslog(syslogData) {
+    const message = syslogData.message.toLowerCase();
+
+    // Look for traffic patterns in syslog messages
+    // This is a simplified example - in production, you'd have more sophisticated parsing
+
+    // Check for connection messages
+    if (message.includes('connection') || message.includes('session')) {
+      const sourceIp = this.extractIpAddress(syslogData.message);
+      const portMatch = syslogData.message.match(/port\s*(\d+)/i);
+      const destinationPort = portMatch ? portMatch[1] : null;
+
+      // Estimate traffic (this is simplified)
+      const bytes = Math.floor(Math.random() * 10000);
+      const packets = Math.floor(bytes / 1500);
+
+      this.trafficAnalyzer.processTrafficData({
+        protocol: 'tcp',
+        bytes: bytes,
+        packets: packets,
+        sourceIp: sourceIp,
+        destinationPort: destinationPort
+      });
+    }
+
+    // Check for ACL violations
+    if (message.includes('acl') && (message.includes('deny') || message.includes('violation'))) {
+      const sourceIp = this.extractIpAddress(syslogData.message);
+      const aclMatch = message.match(/acl\s+(\S+)/i);
+      const aclName = aclMatch ? aclMatch[1] : 'unknown';
+      const portMatch = message.match(/port\s*(\d+)/i);
+      const destinationPort = portMatch ? portMatch[1] : null;
+
+      this.metrics.recordAclViolation(aclName, sourceIp, destinationPort);
+
+      this.logger.warn('ACL violation detected in syslog', {
+        acl_name: aclName,
+        source_ip: sourceIp,
+        destination_port: destinationPort,
+        message: syslogData.message
+      });
+    }
+  }
+
+  /**
+   * Extract IP address from message
+   */
+  extractIpAddress(message) {
+    const ipPattern = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
+    const match = message.match(ipPattern);
+    return match ? match[0] : null;
+  }
+
+  /**
+   * Check if server is running
+   */
+  isRunning() {
+    return this.isRunning;
+  }
+
+  /**
+   * Get statistics
+   */
+  getStatistics() {
+    return {
+      running: this.isRunning,
+      messages_received: this.messageCount,
+      port: this.config.port,
+      bind_address: this.config.bind_address
+    };
+  }
+}
+
+module.exports = SyslogServer;

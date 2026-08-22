@@ -1,0 +1,310 @@
+const yaml = require('js-yaml');
+const fs = require('fs');
+const path = require('path');
+const winston = require('winston');
+const express = require('express');
+const promClient = require('prom-client');
+
+// Import modules
+const SnmpMonitor = require('./modules/snmp-monitor');
+const IcmpTracker = require('./modules/icmp-tracker');
+const SyslogListener = require('./modules/syslog-listener');
+const QosMonitor = require('./modules/qos-monitor');
+const TrafficBalancer = require('./modules/traffic-balancer');
+const OptimizationEngine = require('./modules/optimization-engine');
+
+// Load configuration
+const config = yaml.load(fs.readFileSync('./router.yml', 'utf8'));
+
+// Initialize logger
+const logger = winston.createLogger({
+  level: config.agent.log_level,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.File({ 
+      filename: config.agent.log_file || 'logs/agent.log',
+      maxsize: 10485760, // 10MB
+      maxFiles: 5
+    })
+  ]
+});
+
+// Create logs directory if it doesn't exist
+const logsDir = path.dirname(config.agent.log_file || 'logs/agent.log');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Initialize Prometheus metrics
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+// Custom metrics
+const cpuUsageGauge = new promClient.Gauge({
+  name: 'router_cpu_usage_percent',
+  help: 'Router CPU usage percentage',
+  registers: [register]
+});
+
+const memoryUsageGauge = new promClient.Gauge({
+  name: 'router_memory_usage_percent',
+  help: 'Router memory usage percentage',
+  registers: [register]
+});
+
+const latencyGauge = new promClient.Gauge({
+  name: 'router_latency_ms',
+  help: 'Current network latency in milliseconds',
+  labelNames: ['destination'],
+  registers: [register]
+});
+
+const jitterGauge = new promClient.Gauge({
+  name: 'router_jitter_ms',
+  help: 'Network jitter in milliseconds',
+  labelNames: ['destination'],
+  registers: [register]
+});
+
+const packetLossGauge = new promClient.Gauge({
+  name: 'router_packet_loss_percent',
+  help: 'Packet loss percentage',
+  labelNames: ['destination'],
+  registers: [register]
+});
+
+const qosViolationGauge = new promClient.Gauge({
+  name: 'router_qos_violations',
+  help: 'Number of QoS policy violations',
+  labelNames: ['class'],
+  registers: [register]
+});
+
+const trafficImbalanceGauge = new promClient.Gauge({
+  name: 'router_traffic_imbalance_percent',
+  help: 'Traffic imbalance percentage across interfaces',
+  registers: [register]
+});
+
+const optimizationTriggeredCounter = new promClient.Counter({
+  name: 'router_optimizations_triggered',
+  help: 'Number of optimization actions triggered',
+  labelNames: ['type'],
+  registers: [register]
+});
+
+const optimizationAppliedCounter = new promClient.Counter({
+  name: 'router_optimizations_applied',
+  help: 'Number of optimizations successfully applied',
+  labelNames: ['type'],
+  registers: [register]
+});
+
+const efficiencyScoreGauge = new promClient.Gauge({
+  name: 'router_efficiency_score',
+  help: 'Overall router efficiency score (0-100)',
+  registers: [register]
+});
+
+// Initialize modules
+const snmpMonitor = new SnmpMonitor(config, logger);
+const icmpTracker = new IcmpTracker(config, logger);
+const syslogListener = new SyslogListener(config, logger);
+const qosMonitor = new QosMonitor(config, logger);
+const trafficBalancer = new TrafficBalancer(config, logger);
+const optimizationEngine = new OptimizationEngine(config, logger);
+
+// Store current metrics
+let currentMetrics = {
+  cpu: 0,
+  memory: 0,
+  latency: {},
+  jitter: {},
+  packetLoss: {},
+  qosViolations: {},
+  trafficImbalance: 0,
+  efficiencyScore: 100
+};
+
+// Update Prometheus metrics
+function updatePrometheusMetrics() {
+  cpuUsageGauge.set(currentMetrics.cpu);
+  memoryUsageGauge.set(currentMetrics.memory);
+  trafficImbalanceGauge.set(currentMetrics.trafficImbalance);
+  efficiencyScoreGauge.set(currentMetrics.efficiencyScore);
+
+  // Update latency, jitter, and packet loss for each destination
+  for (const [dest, value] of Object.entries(currentMetrics.latency)) {
+    latencyGauge.set({ destination: dest }, value);
+  }
+
+  for (const [dest, value] of Object.entries(currentMetrics.jitter)) {
+    jitterGauge.set({ destination: dest }, value);
+  }
+
+  for (const [dest, value] of Object.entries(currentMetrics.packetLoss)) {
+    packetLossGauge.set({ destination: dest }, value);
+  }
+
+  // Update QoS violations
+  for (const [cls, count] of Object.entries(currentMetrics.qosViolations)) {
+    qosViolationGauge.set({ class: cls }, count);
+  }
+}
+
+// Calculate efficiency score
+function calculateEfficiencyScore(metrics) {
+  const cpuScore = Math.max(0, 100 - metrics.cpu);
+  const memoryScore = Math.max(0, 100 - metrics.memory);
+  
+  const avgLatency = Object.values(metrics.latency).reduce((a, b) => a + b, 0) / 
+                     (Object.keys(metrics.latency).length || 1);
+  const latencyScore = Math.max(0, 100 - avgLatency);
+  
+  const imbalancePenalty = metrics.trafficImbalance * 2;
+  const qosViolationCount = Object.values(metrics.qosViolations).reduce((a, b) => a + b, 0);
+  const qosPenalty = qosViolationCount * 5;
+
+  const score = (cpuScore * 0.3 + memoryScore * 0.2 + latencyScore * 0.3 + 
+                 imbalancePenalty * -0.1 + qosPenalty * -0.1);
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Main monitoring loop
+async function monitorAndOptimize() {
+  try {
+    logger.info('Starting monitoring cycle...');
+
+    // Collect metrics from all modules
+    const snmpMetrics = await snmpMonitor.collectMetrics();
+    const icmpMetrics = await icmpTracker.collectMetrics();
+    const qosMetrics = await qosMonitor.collectMetrics();
+    const trafficMetrics = await trafficBalancer.analyzeTraffic();
+
+    // Update current metrics
+    currentMetrics = {
+      cpu: snmpMetrics.cpuUsage || 0,
+      memory: snmpMetrics.memoryUsage || 0,
+      latency: icmpMetrics.latency || {},
+      jitter: icmpMetrics.jitter || {},
+      packetLoss: icmpMetrics.packetLoss || {},
+      qosViolations: qosMetrics.violations || {},
+      trafficImbalance: trafficMetrics.imbalance || 0
+    };
+
+    // Calculate efficiency score
+    currentMetrics.efficiencyScore = calculateEfficiencyScore(currentMetrics);
+
+    logger.info(`Current efficiency score: ${currentMetrics.efficiencyScore.toFixed(2)}`);
+    logger.info(`CPU: ${currentMetrics.cpu}%, Memory: ${currentMetrics.memory}%`);
+    logger.info(`Traffic imbalance: ${currentMetrics.trafficImbalance}%`);
+
+    // Update Prometheus metrics
+    updatePrometheusMetrics();
+
+    // Check if optimization is needed
+    if (config.optimization.enabled) {
+      const optimizationNeeded = await optimizationEngine.analyze(currentMetrics);
+      
+      if (optimizationNeeded.length > 0) {
+        logger.warn(`Optimization needed: ${JSON.stringify(optimizationNeeded)}`);
+
+        // Trigger optimizations
+        for (const opt of optimizationNeeded) {
+          optimizationTriggeredCounter.inc({ type: opt.type });
+          
+          if (config.optimization.auto_apply) {
+            logger.info(`Auto-applying optimization: ${opt.type}`);
+            const applied = await optimizationEngine.applyOptimization(opt);
+            
+            if (applied) {
+              optimizationAppliedCounter.inc({ type: opt.type });
+              logger.info(`Optimization ${opt.type} applied successfully`);
+            } else {
+              logger.error(`Failed to apply optimization: ${opt.type}`);
+            }
+          } else {
+            logger.info(`Optimization recommended: ${opt.type} - ${opt.description}`);
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    logger.error(`Error in monitoring cycle: ${error.message}`);
+  }
+}
+
+// Start Express server for metrics
+const app = express();
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error.message);
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    efficiencyScore: currentMetrics.efficiencyScore,
+    uptime: process.uptime()
+  });
+});
+
+app.listen(config.agent.metrics_port, () => {
+  logger.info(`Performance Optimization Agent started`);
+  logger.info(`Metrics available at http://localhost:${config.agent.metrics_port}/metrics`);
+  logger.info(`Health check at http://localhost:${config.agent.metrics_port}/health`);
+});
+
+// Start modules
+async function startModules() {
+  try {
+    // Start syslog listener
+    if (config.syslog.enabled) {
+      await syslogListener.start();
+      logger.info('Syslog listener started');
+    }
+
+    // Initial metrics collection
+    await monitorAndOptimize();
+
+    // Set up periodic monitoring
+    setInterval(monitorAndOptimize, config.optimization.check_interval || 30000);
+
+    logger.info(`Monitoring interval set to ${config.optimization.check_interval}ms`);
+
+  } catch (error) {
+    logger.error(`Error starting modules: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  logger.info('Shutting down Performance Optimization Agent...');
+  syslogListener.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logger.info('Shutting down Performance Optimization Agent...');
+  syslogListener.stop();
+  process.exit(0);
+});
+
+// Start the agent
+startModules();

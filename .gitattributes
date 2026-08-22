@@ -1,0 +1,18 @@
+# Normalize everything to LF in the repository.
+# Without this, shell scripts authored on Windows commit with CRLF and fail
+# in CI on Linux with: bash: \r: command not found
+* text=auto eol=lf
+
+# Executable scripts must be LF in the working tree too, not just in the repo.
+*.sh    text eol=lf
+Makefile text eol=lf
+Dockerfile text eol=lf
+
+# Lockfiles are generated - collapse their diffs in review
+package-lock.json linguist-generated=true -diff
+
+# Binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

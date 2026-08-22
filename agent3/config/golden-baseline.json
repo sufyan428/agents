@@ -1,0 +1,143 @@
+{
+  "router_configuration": {
+    "metadata": {
+      "version": "1.0",
+      "created": "2024-01-01T00:00:00Z",
+      "description": "Golden baseline configuration for security validation"
+    },
+    "system": {
+      "hostname": "secure-router-01",
+      "timezone": "UTC",
+      "ntp_servers": [
+        "time1.example.com",
+        "time2.example.com"
+      ]
+    },
+    "interfaces": {
+      "management": {
+        "enabled": true,
+        "access_restrictions": [
+          "192.168.1.0/24"
+        ],
+        "ssh_enabled": true,
+        "telnet_enabled": false,
+        "http_enabled": false,
+        "https_enabled": true
+      }
+    },
+    "security": {
+      "authentication": {
+        "max_failed_attempts": 5,
+        "lockout_duration": 300,
+        "password_policy": {
+          "min_length": 12,
+          "require_uppercase": true,
+          "require_lowercase": true,
+          "require_numbers": true,
+          "require_special_chars": true,
+          "rotation_days": 90
+        }
+      },
+      "ssh": {
+        "protocol_version": "2",
+        "key_exchange_algorithms": ["curve25519-sha256", "ecdh-sha2-nistp256"],
+        "cipher_algorithms": ["aes256-gcm@openssh.com", "aes128-gcm@openssh.com"],
+        "mac_algorithms": ["hmac-sha2-256", "hmac-sha2-512"]
+      }
+    },
+    "firewall": {
+      "default_policy": "deny",
+      "rules": [
+        {
+          "id": 1,
+          "action": "allow",
+          "protocol": "tcp",
+          "source": "192.168.1.0/24",
+          "destination": "any",
+          "port": "22",
+          "description": "SSH access from management network"
+        },
+        {
+          "id": 2,
+          "action": "allow",
+          "protocol": "tcp",
+          "source": "192.168.1.0/24",
+          "destination": "any",
+          "port": "443",
+          "description": "HTTPS access from management network"
+        },
+        {
+          "id": 3,
+          "action": "deny",
+          "protocol": "tcp",
+          "source": "any",
+          "destination": "any",
+          "port": "23",
+          "description": "Block Telnet"
+        },
+        {
+          "id": 4,
+          "action": "deny",
+          "protocol": "tcp",
+          "source": "any",
+          "destination": "any",
+          "port": "80",
+          "description": "Block HTTP"
+        }
+      ]
+    },
+    "acl": {
+      "management_acl": {
+        "entries": [
+          {
+            "sequence": 10,
+            "action": "permit",
+            "source": "192.168.1.0/24",
+            "destination": "any"
+          },
+          {
+            "sequence": 20,
+            "action": "deny",
+            "source": "any",
+            "destination": "any"
+          }
+        ]
+      }
+    },
+    "snmp": {
+      "community_strings": {
+        "read_only": "public",
+        "read_write": "private"
+      },
+      "access_lists": {
+        "read_only": ["192.168.1.0/24"],
+        "read_write": ["192.168.1.100"]
+      }
+    },
+    "logging": {
+      "enabled": true,
+      "syslog_servers": [
+        {
+          "host": "192.168.1.100",
+          "port": 514,
+          "protocol": "udp"
+        }
+      ],
+      "log_level": "informational"
+    },
+    "services": {
+      "disabled_services": [
+        "telnet",
+        "http",
+        "ftp",
+        "tftp"
+      ],
+      "enabled_services": [
+        "ssh",
+        "https",
+        "snmp",
+        "ntp"
+      ]
+    }
+  }
+}

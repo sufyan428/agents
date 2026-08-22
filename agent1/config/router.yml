@@ -1,0 +1,22 @@
+routers:
+  - name: Main-Office
+    enabled: true
+    ip: 192.168.1.1
+    community: public
+    port: 161
+    version: 2c
+    poll_interval: 30
+default_oids:
+  uptime: 1.3.6.1.2.1.1.3.0
+  cpu: 1.3.6.1.4.1.9.9.109.1.1.1.1.8.1
+  memory_used: 1.3.6.1.4.1.9.9.48.1.1.1.5.1
+  memory_total: 1.3.6.1.4.1.9.9.48.1.1.1.7.1
+syslog:
+  enabled: true
+  protocol: udp
+  port: 514
+snmp_traps:
+  port: 162
+  protocol: udp
+server:
+  port: 9090

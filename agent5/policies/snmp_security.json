@@ -1,0 +1,16 @@
+{
+  "name": "SNMP Security Check",
+  "description": "Ensure SNMP community string is not default (public/private)",
+  "type": "configuration",
+  "severity": "critical",
+  "expectedValue": "secure",
+  "healing": {
+    "enabled": true,
+    "strategy": "update_snmp_community",
+    "max_retries": 3
+  },
+  "metadata": {
+    "category": "security",
+    "compliance": "required"
+  }
+}

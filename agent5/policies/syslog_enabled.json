@@ -1,0 +1,16 @@
+{
+  "name": "Syslog Enabled Check",
+  "description": "Verify syslog is enabled for centralized logging",
+  "type": "configuration",
+  "severity": "medium",
+  "expectedValue": "enabled",
+  "healing": {
+    "enabled": true,
+    "strategy": "enable_syslog",
+    "max_retries": 2
+  },
+  "metadata": {
+    "category": "logging",
+    "compliance": "required"
+  }
+}

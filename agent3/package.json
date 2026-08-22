@@ -1,0 +1,40 @@
+{
+  "name": "security-intrusion-detection-agent",
+  "version": "1.0.0",
+  "description": "Security and Intrusion Detection Agent for monitoring router security, detecting unauthorized access, and validating configurations",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node tests/local-simulation.js"
+  },
+  "keywords": [
+    "security",
+    "intrusion-detection",
+    "network-security",
+    "router-monitoring",
+    "syslog",
+    "snmp",
+    "prometheus"
+  ],
+  "author": "sufiyansrepos",
+  "license": "MIT",
+  "dependencies": {
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "prom-client": "^15.1.0",
+    "snmp-native": "^1.2.0",
+    "yaml": "^2.3.4",
+    "axios": "^1.6.2",
+    "express": "^4.18.2",
+    "ping": "^0.4.4",
+    "node-netconf": "^1.1.0",
+    "axios-retry": "^3.9.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

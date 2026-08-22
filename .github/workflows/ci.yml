@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Every agent is an independent Node project - install + syntax-check +
+  # run its own test suite (agents 1-6 have no automated tests yet; agents
+  # 7-10 have unit tests for their pure logic, see `npm test` in each).
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        agent:
+          - agent1
+          - agent2
+          - agent3
+          - agent4
+          - agent5
+          - agent6
+          - agent7
+          - agent8
+          - agent9
+          - agent10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.agent }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.agent }}
+        run: npm ci
+
+      - name: Syntax-check all source files
+        working-directory: ${{ matrix.agent }}
+        run: find src -name '*.js' -exec node -c {} \; 2>&1 | tee /tmp/syntax-errors.txt && [ ! -s /tmp/syntax-errors.txt ]
+
+      - name: Run tests (if this agent declares a test script)
+        working-directory: ${{ matrix.agent }}
+        # agent6's test.js is a live integration test - it expects the
+        # orchestrator already running, which the separate smoke-test job
+        # below provides. Running it here (in isolation) would just time out
+        # waiting for a server that was never started.
+        if: matrix.agent != 'agent6'
+        run: npm test --if-present
+
+  # Boots the whole framework (5 core agents; agents 7-10 stay disabled since
+  # no AI key is configured in CI) and checks the orchestrator reports every
+  # core agent running before tearing it down.
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install all agents
+        run: |
+          for d in agent1 agent2 agent3 agent4 agent5 agent6; do
+            (cd "$d" && npm ci)
+          done
+
+      - name: Boot the orchestrator and verify all 5 core agents come up healthy
+        run: bash scripts/smoke-test.sh
+
+      - name: Run agent6's own integration test suite against the live orchestrator
+        run: |
+          cd agent6
+          timeout 60 node src/index.js > /tmp/orchestrator.log 2>&1 &
+          ORCH_PID=$!
+          npm test
+          TEST_EXIT=$?
+          kill "$ORCH_PID" 2>/dev/null || true
+          exit $TEST_EXIT

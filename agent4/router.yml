@@ -1,0 +1,46 @@
+router:
+  host: 192.168.1.1
+  snmp:
+    community: public
+    port: 161
+    version: 2c
+optimization:
+  enabled: true
+  auto_apply: false
+  threshold_cpu: 80
+  threshold_memory: 85
+  threshold_latency: 100
+  threshold_jitter: 50
+qos:
+  enabled: true
+  priority_classes:
+    - name: critical
+      priority: 7
+      bandwidth_percent: 40
+    - name: high
+      priority: 5
+      bandwidth_percent: 30
+    - name: medium
+      priority: 3
+      bandwidth_percent: 20
+    - name: low
+      priority: 1
+      bandwidth_percent: 10
+traffic_balancing:
+  enabled: true
+  algorithm: round_robin
+  imbalance_threshold: 30
+icmp:
+  timeout: 5000
+  packet_size: 56
+syslog:
+  enabled: true
+  protocol: udp
+  port: 5143
+  bind_host: 0.0.0.0
+agent:
+  log_level: info
+  log_file: ./logs/agent.log
+  metrics_port: 9093
+server:
+  port: 9093

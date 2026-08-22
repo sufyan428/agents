@@ -1,0 +1,60 @@
+# AI Correlation & Reasoning Agent - non-secret settings.
+# The API key itself is BYOK - it lives in .env, never here.
+
+server:
+  port: 9096
+  health_path: /health
+  metrics_path: /metrics
+
+orchestrator:
+  base_url: "http://localhost:8080"
+  timeout_ms: 5000
+
+ai:
+  # "auto" picks the provider based on which key is present in .env:
+  # OPENROUTER_API_KEY -> openrouter, else ANTHROPIC_API_KEY -> anthropic.
+  # Force one explicitly with "anthropic" or "openrouter" if you set both.
+  provider: "auto"
+  anthropic:
+    model: "claude-opus-4-8"
+    effort: "medium"          # low | medium | high | xhigh | max
+  openrouter:
+    # A smaller free model, chosen for RELIABILITY over raw size: OpenRouter's
+    # biggest free models (e.g. nvidia/nemotron-3-ultra-550b-a55b:free, 550B)
+    # are the most oversubscribed and measurably return empty completions
+    # under load - bad for an unattended agent calling every 60-120s. This
+    # 20B model tested 100% clean across repeated calls. Swap to any other
+    # "provider/model:free" (or paid) id from https://openrouter.ai/models,
+    # or set OPENROUTER_MODEL to override without touching this file - a
+    # bigger model is a fine tradeoff to make deliberately, just go in
+    # knowing free-tier capacity on the largest models is inconsistent.
+    model: "openai/gpt-oss-20b:free"
+  max_tokens: 4096
+  request_timeout_ms: 45000
+
+correlation:
+  poll_interval_seconds: 60
+  history_size: 30
+  # Only spend an LLM call when something actually looks off (an agent is
+  # unhealthy/stopped, or its status flipped since the last poll). A full
+  # baseline check still runs every `baseline_every_n_polls` cycles regardless,
+  # so slow-building issues don't go unseen just because nothing looked wrong
+  # at any single poll.
+  anomaly_only: true
+  baseline_every_n_polls: 30
+
+agents:
+  - name: agent1-monitoring
+    port: 9090
+  - name: agent2-resilience
+    port: 9091
+  - name: agent3-security
+    port: 9092
+  - name: agent4-performance
+    port: 9093
+  - name: agent5-automation
+    port: 9094
+
+logging:
+  level: "info"
+  directory: "./logs"
