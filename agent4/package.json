@@ -25,7 +25,7 @@
     "@ragent/agent-protocol": "1.0.0",
     "@ragent/analytics": "1.0.0",
     "axios": "^1.8.4",
-    "express": "^4.21.2",
+    "express": "^5.2.1",
     "js-yaml": "^4.1.0",
     "net-snmp": "^3.11.0",
     "ping": "^0.4.4",
