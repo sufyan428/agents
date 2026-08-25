@@ -24,7 +24,7 @@
     "@ragent/agent-common": "1.0.0",
     "@ragent/agent-protocol": "1.0.0",
     "axios": "^1.8.4",
-    "express": "^4.21.2",
+    "express": "^5.2.1",
     "joi": "^17.13.3",
     "net-snmp": "^3.9.1",
     "node-cron": "^4.2.1",
