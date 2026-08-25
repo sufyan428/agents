@@ -23,7 +23,7 @@
     "@ragent/ai-core": "1.0.0",
     "@ragent/analytics": "1.0.0",
     "axios": "^1.8.4",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "js-yaml": "^4.1.0",
     "node-cron": "^4.2.1",
